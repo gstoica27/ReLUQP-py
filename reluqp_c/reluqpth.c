@@ -7,6 +7,8 @@
 // unzip and replace my basedir path with your path to the uthash-master directory.
 #include "/home/hice1/gstoica3/courses/6679/project/ReLUQP-py/packages/uthash-master/include/uthash.h"
 #include <signal.h>
+#include <float.h>
+#include <time.h>
 
 
 /// @brief Declare all structs ///
@@ -575,6 +577,42 @@ void print_matrix(int r, int c, float matrix[r][c])
 }
 
 
+int argmin(double* array, int n) {
+    if (array == NULL || n <= 0) return -1; // Error handling for invalid input
+
+    int minIndex = 0;
+    float minValue = FLT_MAX;
+
+    for (int i = 0; i < n; i++) {
+        if (array[i] < minValue) {
+            minValue = array[i];
+            minIndex = i;
+        }
+    }
+
+    return minIndex;
+}
+
+
+double* vector_abs(double* arr, int dim) {
+    double* abs_arr = (double*)malloc(dim * sizeof(double));
+    for (int i = 0; i < dim; i++) {
+        abs_arr[i] = fabs(arr[i]);
+    }
+    return abs_arr;
+
+}
+
+
+double* vector_subtract_scalar(double* vector, double scalar, int dim) {
+    double* dest = (double*)malloc(dim * sizeof(double));
+    for (int i = 0; i < dim; i++) {
+        dest[i] = vector[i] - scalar;
+    }
+    return dest;
+}
+
+
 void MatrixInverse3x3(double** m, double** minv) {
     // computes the inverse of a matrix m
     double det = m[0][0] * (m[1][1] * m[2][2] - m[2][1] * m[1][2]) -
@@ -950,20 +988,78 @@ double* ReLU_Layer_Forward(ReLU_Layer* layer, double* x, int idx) {
 }
 
 
-// typedef struct ReLU_QP
-// {
-//     Info* info;
-//     Results* results;
-//     Settings* settings;
-//     QP* qp;
-//     int start;
-//     int end;
-//     double* x;
-//     double* z;
-//     double* lam;
-//     double* output;
-//     int rho_ind;
-// };
+typedef struct
+{
+    Info* info;
+    Results* results;
+    Settings* settings;
+    ReLU_Layer* layers;
+    QP* qp;
+    clock_t start;
+    clock_t end;
+    // double* x;
+    // double* z;
+    // double* lam;
+    double* output;
+    int rho_ind;
+} ReLU_QP;
+
+
+ReLU_QP* Initialize_ReLU_QP(
+    double** H, double* g, double** A, double* l, double* u,
+    bool warm_starting, 
+    bool scaling,
+    double rho,
+    double rho_min,
+    double rho_max,
+    double sigma, 
+    bool adaptive_rho,
+    int adaptive_rho_interval,
+    int adaptive_rho_tolerance,
+    int max_iter,
+    double eps_abs,
+    int check_interval,
+    bool verbose,
+    double eq_tol,
+    int nc,
+    int nf,
+    int nx
+) {
+
+    ReLU_QP* relu_qp = (ReLU_QP*)malloc(sizeof(ReLU_QP));
+
+    relu_qp->start = clock();
+    relu_qp->settings = InitializeSettings(
+        verbose,
+        warm_starting,
+        scaling,
+        rho,
+        rho_min,
+        rho_max,
+        sigma,
+        adaptive_rho,
+        adaptive_rho_interval,
+        adaptive_rho_tolerance,
+        max_iter,
+        eps_abs,
+        eq_tol,
+        check_interval
+    );
+    relu_qp->info = InitializeInfo(0,0,0,0,0,0,0,0,0);
+    relu_qp->results = InitializeResults(0,0,relu_qp->info);
+    relu_qp->qp = InitializeQP(H, g, A, l, u, nx, nc, nf);
+    relu_qp->layers = Initialize_ReLU_Layer(relu_qp->qp, relu_qp->settings);
+    // double* x = create_vector(nx);
+    // double* z = create_vector(nc);
+    // double* lam = create_vector(nc);
+   relu_qp->output = create_vector(nx + 2*nc);
+    // self.rho_ind = np.argmin(np.abs(self.layers.rhos.cpu().detach().numpy() - self.settings.rho))
+    double* rhos_minus_rho = vector_subtract_scalar(relu_qp->layers->rhos, relu_qp->settings->rho, relu_qp->layers->rhos_len);
+    relu_qp->rho_ind = argmin(vector_abs(rhos_minus_rho, relu_qp->layers->rhos_len), relu_qp->layers->rhos_len);
+    relu_qp->end = clock();
+    relu_qp->info->setup_time = ((double)(relu_qp->end - relu_qp->start)) / CLOCKS_PER_SEC;
+    return relu_qp;
+}
 
 
 
@@ -1075,6 +1171,29 @@ int main()
     }
     printf("\n");
 
+    ReLU_QP* relu_qp = Initialize_ReLU_QP(
+        H, g, A, l, u,
+        warm_starting,
+        scaling,
+        rho,
+        rho_min,
+        rho_max,
+        sigma,
+        adaptive_rho,
+        adaptive_rho_interval,
+        adaptive_rho_tolerance,
+        max_iter,
+        eps_abs,
+        check_interval,
+        verbose,
+        eq_tol,
+        nc,
+        nf,
+        nx
+    );
+
+    printf("The RELU_QP IS:\n");
+    printf("ReLU_QP rho_ind: %d\n", relu_qp->rho_ind);
 
     
     freeQP(qp);
