@@ -8,7 +8,7 @@
 #include "/home/hice1/gstoica3/courses/6679/project/ReLUQP-py/packages/uthash-master/include/uthash.h"
 #include <signal.h>
 #include <float.h>
-#include <time.h>
+#include <sys/time.h>
 
 
 /// @brief Declare all structs ///
@@ -987,6 +987,10 @@ double* ReLU_Layer_Forward(ReLU_Layer* layer, double* x, int idx) {
     return intermediate;
 }
 
+typedef struct  {
+    time_t      tv_sec;     /* seconds */
+    suseconds_t tv_usec;    /* microseconds */
+} timeval;
 
 typedef struct
 {
@@ -995,8 +999,8 @@ typedef struct
     Settings* settings;
     ReLU_Layer* layers;
     QP* qp;
-    clock_t start;
-    clock_t end;
+    struct timeval start;
+    struct timeval end;
     // double* x;
     // double* z;
     // double* lam;
@@ -1028,7 +1032,8 @@ ReLU_QP* Initialize_ReLU_QP(
 
     ReLU_QP* relu_qp = (ReLU_QP*)malloc(sizeof(ReLU_QP));
 
-    relu_qp->start = clock();
+    // relu_qp->start = clock();
+    gettimeofday(&relu_qp->start, NULL);
     relu_qp->settings = InitializeSettings(
         verbose,
         warm_starting,
@@ -1056,10 +1061,15 @@ ReLU_QP* Initialize_ReLU_QP(
     // self.rho_ind = np.argmin(np.abs(self.layers.rhos.cpu().detach().numpy() - self.settings.rho))
     double* rhos_minus_rho = vector_subtract_scalar(relu_qp->layers->rhos, relu_qp->settings->rho, relu_qp->layers->rhos_len);
     relu_qp->rho_ind = argmin(vector_abs(rhos_minus_rho, relu_qp->layers->rhos_len), relu_qp->layers->rhos_len);
-    relu_qp->end = clock();
-    relu_qp->info->setup_time = ((double)(relu_qp->end - relu_qp->start)) / CLOCKS_PER_SEC;
+    gettimeofday(&relu_qp->end, NULL);
+    double elapsedTime = (double)(relu_qp->end.tv_sec - relu_qp->start.tv_sec) * 1000.0;
+    elapsedTime += (((double)(relu_qp->end.tv_usec - relu_qp->start.tv_usec)) / 1000.0) / 1000.;
+    relu_qp->info->setup_time = elapsedTime;
     return relu_qp;
 }
+
+
+
 
 
 
@@ -1194,6 +1204,7 @@ int main()
 
     printf("The RELU_QP IS:\n");
     printf("ReLU_QP rho_ind: %d\n", relu_qp->rho_ind);
+    printf("The setup time taken is: %lf\n", relu_qp->info->setup_time);
 
     
     freeQP(qp);
