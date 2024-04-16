@@ -701,6 +701,11 @@ double compute_J(double** H, double* g, double* x, int nx) {
 
 void update_results(ReLU_QP* relu_qp, int iter, double pri_res, double dua_res, double rho_estimate) {
     // gettimeofday(&relu_qp->start, NULL);
+    LARGE_INTEGER frequency, start, end;
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&start);  // Start timing
+
+
     relu_qp->results->info->iter = iter;
     relu_qp->results->info->pri_res = pri_res;
     relu_qp->results->info->dua_res = dua_res;
@@ -717,9 +722,18 @@ void update_results(ReLU_QP* relu_qp, int iter, double pri_res, double dua_res, 
         z[i - nx] = relu_qp->output[i];
     }
     relu_qp->results->info->obj_val = compute_J(relu_qp->qp->H, relu_qp->qp->g, x, nx);
+
+/*
     gettimeofday(&relu_qp->end, NULL);
     double elapsedTime = (double)(relu_qp->end.tv_sec - relu_qp->start.tv_sec) * 1000.0;
     elapsedTime += (((double)(relu_qp->end.tv_usec - relu_qp->start.tv_usec)) / 1000.0) / 1000.;
+
+*/
+
+    QueryPerformanceCounter(&end);  // End timing
+    double elapsedTime = (double)(end.QuadPart - start.QuadPart) * 1000.0 / frequency.QuadPart; // Convert to milliseconds
+
+
     relu_qp->results->info->run_time = elapsedTime;
     relu_qp->results->info->solve_time = relu_qp->results->info->update_time + elapsedTime;
     
@@ -731,55 +745,61 @@ void update_results(ReLU_QP* relu_qp, int iter, double pri_res, double dua_res, 
 
 
 
-
-
-
-
-
-
-
 void solve(ReLU_QP* problem) {
-    LARGE_INTEGER frequency;
-    LARGE_INTEGER t1, t2;
-    double elapsedTime;
-
-    // Start the performance counter
-    QueryPerformanceFrequency(&frequency);
-    QueryPerformanceCounter(&t1);
+    LARGE_INTEGER frequency, t1, t2;
+    QueryPerformanceFrequency(&frequency); // Get the frequency for timing calculations
+    QueryPerformanceCounter(&t1); // Start the performance counter
 
     Settings* stng = problem->settings;
     int nx = problem->qp->nx;
     int nc = problem->qp->nc;
-    double rho = problem->settings->rho;  // Starting rho, adjust as per rho_ind if needed
+    double rho = problem->layers->rhos[problem->rho_ind]; // Starting rho from adaptive rho array
+
+    double* x = problem->output; // First nx elements are x
+    double* z = problem->output + nx; // Next nc elements are z
+    double* lam = problem->output + nx + nc; // Last nc elements are lam
+
+    double primal_res, dual_res;
 
     for (int k = 1; k <= stng->max_iter; k++) {
-        // Assuming an operation to update x, z, lam from output
-        memcpy(problem->x, problem->output, nx * sizeof(double));
-        memcpy(problem->z, problem->output + nx, nc * sizeof(double));
-        memcpy(problem->lam, problem->output + nx + nc, nc * sizeof(double));
+        // Assume a function to update output based on current state
+        update_output(problem->layers, problem->output, problem->rho_ind);
 
         // Perform computations as required
         if (k % stng->check_interval == 0) {
-            double primal_res, dual_res;
-            compute_residuals(problem->qp->H, problem->qp->A, problem->qp->g, problem->x, problem->z, problem->lam, &rho, stng->rho_min, stng->rho_max, nx, nc, &primal_res, &dual_res);
+            compute_residuals(problem->qp->H, problem->qp->A, problem->qp->g, x, z, lam, &rho, stng->rho_min, stng->rho_max, nx, nc, &primal_res, &dual_res);
 
-            // Log details if verbose
+            // Adaptive rho adjustment
+            if (rho > problem->layers->rhos[problem->rho_ind] * stng->adaptive_rho_tolerance && problem->rho_ind < problem->layers->rhos_len - 1) {
+                problem->rho_ind++;
+            } else if (rho < problem->layers->rhos[problem->rho_ind] / stng->adaptive_rho_tolerance && problem->rho_ind > 0) {
+                problem->rho_ind--;
+            }
+
+            // Verbose output
             if (stng->verbose) {
                 printf("Iter: %d, rho: %.2e, res_p: %.2e, res_d: %.2e\n", k, rho, primal_res, dual_res);
             }
 
             // Check for convergence
-            if (primal_res < stng->eps_abs && dual_res < stng->eps_abs) {
-                update_results(problem->info, k, "solved", primal_res, dual_res, rho);
-                break;
+            if (primal_res < stng->eps_abs * sqrt(nc) && dual_res < stng->eps_abs * sqrt(nx)) {
+                update_results(problem, k, primal_res, dual_res, rho);
+                break; // Exit loop as the problem is considered solved
             }
         }
     }
 
-    // Stop the performance counter
-    QueryPerformanceCounter(&t2);
-    elapsedTime = (double)(t2.QuadPart - t1.QuadPart) * 1000.0 / frequency.QuadPart;
+    QueryPerformanceCounter(&t2); // Stop the performance counter
+    double elapsedTime = (double)(t2.QuadPart - t1.QuadPart) * 1000.0 / frequency.QuadPart;
     problem->info->solve_time = elapsedTime;
 }
 
 
+
+
+
+
+
+int main(){
+    return 0;
+}
