@@ -1066,6 +1066,9 @@ ReLU_QP* Initialize_ReLU_QP(
     // double* z = create_vector(nc);
     // double* lam = create_vector(nc);
    relu_qp->output = create_vector(nx + 2*nc);
+   for (int i =0; i < nx + 2*nc; i++) {
+        relu_qp->output[i] = 0;
+   }
     // self.rho_ind = np.argmin(np.abs(self.layers.rhos.cpu().detach().numpy() - self.settings.rho))
     double* rhos_minus_rho = vector_subtract_scalar(relu_qp->layers->rhos, relu_qp->settings->rho, relu_qp->layers->rhos_len);
     relu_qp->rho_ind = argmin(vector_abs(rhos_minus_rho, relu_qp->layers->rhos_len), relu_qp->layers->rhos_len);
@@ -1082,6 +1085,16 @@ double compute_J(double** H, double* g, double* x, int nx) {
     double Hx_dot_x = vector_dot(Hx, x, nx);
     double gx = vector_dot(g, x, nx);
     return 0.5 * Hx_dot_x + gx;
+}
+
+
+void clear_primal_dual(ReLU_QP* relu_qp) {
+    for (int i = 0; i < relu_qp->qp->nx + 2 * relu_qp->qp->nc; i++) {
+        relu_qp->output[i] = 0;
+    }
+    // self.rho_ind = np.argmin(np.abs(self.layers.rhos.cpu().detach().numpy() - self.settings.rho))
+    double* rhos_minus_rho = vector_subtract_scalar(relu_qp->layers->rhos, relu_qp->settings->rho, relu_qp->layers->rhos_len);
+    relu_qp->rho_ind = argmin(vector_abs(rhos_minus_rho, relu_qp->layers->rhos_len), relu_qp->layers->rhos_len);
 }
 
 
@@ -1111,6 +1124,9 @@ void update_results(ReLU_QP* relu_qp, int iter, double pri_res, double dua_res, 
     
     double* lam = create_vector(relu_qp->qp->nc);
     // TODO: Need to add the warm_starting check and then the clear_primal_dual function.
+    if (relu_qp->settings->warm_starting) {
+        clear_primal_dual(relu_qp);
+    }
 }
 
 
