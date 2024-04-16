@@ -424,3 +424,118 @@ __global__ void computeSqrt(float *input, float *result, int n) {
 
 
 
+double vector_inf_norm(double* vec, int length) {
+    double max_val = 0.0;
+    for (int i = 0; i < length; i++) {
+        double abs_val = fabs(vec[i]);
+        if (abs_val > max_val) {
+            max_val = abs_val;
+        }
+    }
+    return max_val;
+}
+
+void matrix_vector_mult(double* A, double* B, double* C, int m, int n) {
+    for (int i = 0; i < m; i++) {
+        C[i] = 0.0;
+        for (int j = 0; j < n; j++) {
+            C[i] += A[i * n + j] * B[j];
+        }
+    }
+}
+
+void compute_residuals(double** H, double** A, double* g, double* x, double* z, double* lam, double* rho, double rho_min, double rho_max, int nx, int nc, double* primal_res, double* dual_res) {
+    double *t1 = (double*)malloc(nc * sizeof(double));
+    double *t2 = (double*)malloc(nx * sizeof(double));
+    double *t3 = (double*)malloc(nx * sizeof(double));
+    double *temp_primal = (double*)malloc(nc * sizeof(double));
+    double *temp_dual = (double*)malloc(nx * sizeof(double));
+
+    matrix_vector_mult(*A, x, t1, nc, nx);
+    matrix_vector_mult(*H, x, t2, nx, nx);
+
+    for (int i = 0; i < nx; i++) {
+        t3[i] = 0.0;
+        for (int j = 0; j < nc; j++) {
+            t3[i] += A[j][i] * lam[j];
+        }
+    }
+
+    for (int i = 0; i < nc; i++) {
+        temp_primal[i] = t1[i] - z[i];
+    }
+    *primal_res = vector_inf_norm(temp_primal, nc);
+
+    for (int i = 0; i < nx; i++) {
+        temp_dual[i] = t2[i] + t3[i] + g[i];
+    }
+    *dual_res = vector_inf_norm(temp_dual, nx);
+
+    double numerator = *primal_res / fmax(vector_inf_norm(t1, nc), vector_inf_norm(z, nc));
+    double denom = *dual_res / fmax(fmax(vector_inf_norm(t2, nx), vector_inf_norm(t3, nx)), vector_inf_norm(g, nx));
+
+    *rho = fmax(fmin(sqrt(numerator / denom) * (*rho), rho_max), rho_min);
+
+    free(t1);
+    free(t2);
+    free(t3);
+    free(temp_primal);
+    free(temp_dual);
+}
+
+
+/* Example of compute_residuals
+int main() {
+    int nx = 3;
+    int nc = 2;
+
+    double** H = (double**)malloc(nx * sizeof(double*));
+    double** A = (double**)malloc(nc * sizeof(double*));
+    double* g = (double*)malloc(nx * sizeof(double));
+    double* x = (double*)malloc(nx * sizeof(double));
+    double* z = (double*)malloc(nc * sizeof(double));
+    double* lam = (double*)malloc(nc * sizeof(double));
+    double rho = 1.0, rho_min = 0.1, rho_max = 10.0;
+
+    for (int i = 0; i < nx; i++) {
+        H[i] = (double*)malloc(nx * sizeof(double));
+        for (int j = 0; j < nx; j++) {
+            H[i][j] = (i == j) ? 2.0 : 0.0;
+        }
+        g[i] = 1.0;
+        x[i] = 1.0;
+    }
+    for (int i = 0; i < nc; i++) {
+        A[i] = (double*)malloc(nx * sizeof(double));
+        for (int j = 0; j < nx; j++) {
+            A[i][j] = 1.0;
+        }
+        z[i] = 1.5;
+        lam[i] = 0.5;
+    }
+
+    double primal_res, dual_res;
+
+    compute_residuals(H, A, g, x, z, lam, &rho, rho_min, rho_max, nx, nc, &primal_res, &dual_res);
+
+    printf("Primal Residual: %f\n", primal_res);
+    printf("Dual Residual: %f\n", dual_res);
+    printf("Updated Rho: %f\n", rho);
+
+    for (int i = 0; i < nx; i++) {
+        free(H[i]);
+    }
+    for (int i = 0; i < nc; i++) {
+        free(A[i]);
+    }
+    free(H);
+    free(A);
+    free(g);
+    free(x);
+    free(z);
+    free(lam);
+
+    return 0;
+}
+
+*/
