@@ -736,7 +736,7 @@ ReLU_Layer* Initialize_ReLU_Layer (
             rho = rho / settings->adaptive_rho_tolerance;
             i++;
         }
-        rho = rho*settings->adaptive_rho_tolerance;
+        rho = settings->rho*settings->adaptive_rho_tolerance;
         while (rho <= settings->rho_max) {
             rhos = (double*)realloc(rhos, (i+1) * sizeof(double));
             rhos[i] = rho;
@@ -1310,7 +1310,7 @@ int main()
     bool scaling = false;
     double rho = 0.1;
     double rho_min = 1e-6;
-    double rho_max = 1e6;
+    double rho_max = 1000000.0;
     double sigma = 1e-6;
     bool adaptive_rho = true;
     int adaptive_rho_interval = 1;
