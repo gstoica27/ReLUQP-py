@@ -589,13 +589,17 @@ void mergeSortCPU(double* arr, double* temp, int left, int right)
 
 void print_matrix(int r, int c, double** matrix)
 {
+    printf("[\n");
     for (int i = 0; i < r; i++)
     {
+        printf("[");
         for (int j = 0; j < c; j++) {
-            printf("%lf ", matrix[i][j]);
+            printf("%lf, ", matrix[i][j]);
         }
+        printf("],");
         printf("\n");
     }
+    printf("]\n");
 }
 
 
@@ -761,7 +765,7 @@ ReLU_Layer* Initialize_ReLU_Layer (
     double* g = qp->g;
     double* l = qp->l;
     double* u = qp->u;
-    int nx = qp->nx;
+    // int nx = qp->nx;
     int nc = qp->nc;
     int nf = qp->nf; 
     double sigma = settings->sigma;
@@ -781,31 +785,18 @@ ReLU_Layer* Initialize_ReLU_Layer (
     bool* conditional = (bool*)calloc(nc, sizeof(bool));
     for (int i = 0; i < nc; i++) {
         conditional[i] = flag_checks[i] <= settings->eq_tol;
-        printf("flag_checks: %d\n", conditional[i]);
     }
     free(flag_checks);
     
 
     for (int i = 0; i < relu_layer->rhos_len; i++) {
-        // printf("################################\n");
-        // printf("i: %d\n", i);
         double rho_scalar = relu_layer->rhos[i];
         double* rho = (double*)calloc(nc, sizeof(double));
         for (int j = 0; j < nc; j++) {
             rho[j] = rho_scalar;
         }
         vector_where(conditional, rho, rho_scalar * 1e3, rho_scalar, nc);
-        // printing rho
-        // printf("Rho is: \n");
-        // for (int j = 0; j < nc; j++) {
-        //     printf("%lf ", rho[j]);
-        // }
-        // printf("\n\n");
         double** rho_mat = create_diagonal_matrix(rho, nc);
-        // printf("Rho mat is: \n");
-        // print_matrix(nc, nc, rho_mat);
-        // printf("\n\n");
-
         double* sigma_vector = (double*)calloc(nf, sizeof(double));
         for (int j = 0; j < nf; j++) {
             sigma_vector[j] = sigma;
@@ -827,26 +818,21 @@ ReLU_Layer* Initialize_ReLU_Layer (
         // need to take inverse now.... of summed mats
         double** summed_mat_inv = create_matrix(nf, nf);
         compute_matrix_inverse(summed_mat, summed_mat_inv, nf);
-        // print A.T @ rho @ A:
-        // printf("-------------------------------\n");
-        // print_matrix(nf, nf, AT_rho_A);
-        // printf("--------------------------------\n");
 
         // MatrixInverse3x3(summed_mat, summed_mat_inv);
-        // for (int a = 0; a < nf; a++) {
-        //     for (int b = 0; b < nf; b++) {
-        //         kkts_rhs_invs[i][a][b] = summed_mat_inv[a][b];
-        //         printf("a: %d, b: %d, val: %lf\n", a, b, summed_mat_inv[a][b]);
-        //     }
-        // }
+        for (int a = 0; a < nf; a++) {
+            for (int b = 0; b < nf; b++) {
+                kkts_rhs_invs[i][a][b] = summed_mat_inv[a][b];
+                // printf("a: %d, b: %d, val: %lf\n", a, b, summed_mat_inv[a][b]);
+            }
+        }
         // printf("################################\n");
-        kkts_rhs_invs[i] = summed_mat_inv;
+        // kkts_rhs_invs[i] = summed_mat_inv;
         // // free variables
         free_tensor(rho_A, nc);
         free_tensor(A_transpose, nf);
         free_tensor(summed_mat, nf);
         free_tensor(sigma_mat, nf);
-
     }
 
     // Define W_ks, B_ks, b_ks
@@ -855,50 +841,54 @@ ReLU_Layer* Initialize_ReLU_Layer (
     double*** B_ks = (double***)malloc(relu_layer->rhos_len * sizeof(double**));
     double** b_ks = (double**)malloc(relu_layer->rhos_len * sizeof(double*));
     for (int i = 0; i < relu_layer->rhos_len; i++) {
-        W_ks[i] = (double**)malloc(W_Row * sizeof(double*));
-        B_ks[i] = (double**)malloc(W_Row * sizeof(double*));
-        b_ks[i] = (double*)malloc(W_Row * sizeof(double));
-        for (int j = 0; j < nf + 2 * nc; j++) {
-            W_ks[i][j] = (double*)malloc(W_Row * sizeof(double));
-        }
-        for (int j = 0; j < nf; j++) {
-            B_ks[i][j] = (double*)malloc(nf * sizeof(double));
-        }
+        // W_ks[i] = (double**)malloc(W_Row * sizeof(double*));
+        // B_ks[i] = (double**)malloc(W_Row * sizeof(double*));
+        // b_ks[i] = (double*)malloc(W_Row * sizeof(double));
+        // for (int j = 0; j < nf + 2 * nc; j++) {
+        //     W_ks[i][j] = (double*)malloc(W_Row * sizeof(double));
+        // }
+        // for (int j = 0; j < nf; j++) {
+        //     B_ks[i][j] = (double*)malloc(nf * sizeof(double));
+        // }
+        W_ks[i] = create_matrix(W_Row, nc);
+        B_ks[i] = create_matrix(W_Row, nf);
+        b_ks[i] = create_vector(W_Row);
     }
 
     for (int rho_ind = 0; rho_ind < relu_layer->rhos_len; rho_ind++) {
+        // printf("##################################################\n");
+        // printf("rho_ind is: %d\n", rho_ind);
         double rho_scalar = relu_layer->rhos[rho_ind];
-        double* rho = (double*)calloc(nc, sizeof(double));
+        double* rho = create_vector(nc);
         for (int j = 0; j < nc; j++) {
             rho[j] = rho_scalar;
         }
         vector_where(conditional, rho, rho_scalar * 1e3, rho_scalar, nc);
         double** rho_mat = create_diagonal_matrix(rho, nc);
-        double* sigma_vector = (double*)calloc(nf, sizeof(double));
+        double* sigma_vector = create_vector(nf);
         for (int j = 0; j < nf; j++) {
             sigma_vector[j] = sigma;
         }
         double** Ix = create_diagonal_matrix(sigma_vector, nf);
         free(sigma_vector);
-        double* ones_vector = (double*)calloc(nf, sizeof(double));
-        for (int j = 0; j < nf; j++) {
+        double* ones_vector = (double*)calloc(nc, sizeof(double));
+        for (int j = 0; j < nc; j++) {
             ones_vector[j] = 1;
         }
         double** Ic = create_diagonal_matrix(ones_vector, nc);
-
+        double** K = kkts_rhs_invs[rho_ind];
         // CREATING W_ks elements!!!!
-
         // Create (0, 0) element
         // K @ (sigma * Ix - A.T @ (rho @ A))
         double** A_transpose = transpose_matrix(A, nc, nf);
         double** rho_A = create_matrix(nc, nf);
-        matmul(rho_mat, A, rho_A, nc, nf, nf);
+        matmul(rho_mat, A, rho_A, nc, nc, nf);
         double** AT_rho_A = create_matrix(nf, nf);
         matmul(A_transpose, rho_A, AT_rho_A, nf, nc, nf);
         double** summed_mat = create_matrix(nf, nf);
         subtract_matrices(Ix, AT_rho_A, summed_mat, nf, nf);
         double** elem_00 = create_matrix(nf, nf);
-        matmul(summed_mat, kkts_rhs_invs[rho_ind], elem_00, nf, nf, nf);
+        matmul(K, summed_mat, elem_00, nf, nf, nf);
         // Create (0, 1) element
         // 2 * K @ A.T @ rho
         double** AT_rho = create_matrix(nf, nc);
@@ -925,6 +915,7 @@ ReLU_Layer* Initialize_ReLU_Layer (
         // 2 * A @ K @ A.T @ rho - Ic
         // 2 * partial_elem01 - Ic
         double** A_K_AT_rho = create_matrix(nc, nc);
+        scalar_multiply_matrix(K_AT_rho, .5, K_AT_rho, nf, nc);
         matmul(A, K_AT_rho, A_K_AT_rho, nc, nf, nc);
         scalar_multiply_matrix(A_K_AT_rho, 2, A_K_AT_rho, nc, nc);
         double** elem_11 = create_matrix(nc, nc);
@@ -947,7 +938,7 @@ ReLU_Layer* Initialize_ReLU_Layer (
         // Create (2, 1) element                                                    [nc, nf]
         // -rho
         double** elem_21 = create_matrix(nc, nc);
-        scalar_multiply_matrix(rho_mat, -1., elem_21, nc, nf);
+        scalar_multiply_matrix(rho_mat, -1., elem_21, nc, nc);
         // Create (2, 2) element                                                    [nc, nc]
         // Ic
         double** elem_22 = copy_matrix(Ic, nc, nc); //                              [nc, nc]
@@ -968,12 +959,6 @@ ReLU_Layer* Initialize_ReLU_Layer (
         double** rows_01 = concatenate_matrices(row_0, nf, nf+2*nc, row_1, nc, nf+2*nc, 0, nf+nc, nf+2*nc);
         double** rows_012 = concatenate_matrices(rows_01, nf+nc, nf+2*nc, row_2, nc, nf+2*nc, 0, nf+2*nc, nf+2*nc);
         W_ks[rho_ind] = rows_012;
-        int D = nf + 2*nc;
-        // for (int a = 0; a < D; a++) {
-        //     for (int b = 0; b < D; b++) {
-        //         printf("a: %d, b: %d, val: %lf\n", a, b,rows_012[a][b]);
-        //     }
-        // }
         // FREE TENSORS
         // free_tensor(rho_A, nc);
         // free_tensor(A_transpose, nf);
@@ -981,7 +966,7 @@ ReLU_Layer* Initialize_ReLU_Layer (
         double** neg_AK = create_matrix(nc, nf);
         double** neg_A = create_matrix(nc, nf);
         scalar_multiply_matrix(A, -1, neg_A, nc, nf);
-        matmul(neg_A, kkts_rhs_invs[rho_ind], neg_AK, nc, nf, nf);
+        matmul(neg_A, K, neg_AK, nc, nf, nf);
         double** zeros = create_matrix(nc, nf);
         double** elems_01 = concatenate_matrices(neg_K, nf, nf, neg_AK, nc, nf, 0, nf+nc, nf);
         double** elems_012 = concatenate_matrices(elems_01, nf+nc, nf, zeros, nc, nf, 0, nf+2*nc, nf);
@@ -997,14 +982,6 @@ ReLU_Layer* Initialize_ReLU_Layer (
     relu_layer->b_ks = b_ks;
     relu_layer->clamp_left = qp->nx;
     relu_layer->clamp_right = qp->nx + qp->nc;
-    // // print kkts_rhs_invs
-    // for (int i = 0; i < relu_layer->rhos_len; i++) {
-    //     for (int a = 0; a < nf; a++) {
-    //         for (int b = 0; b < nf; b++) {
-    //             printf("a: %d, b: %d, val: %lf\n", a, b, kkts_rhs_invs[i][a][b]);
-    //         }
-    //     }
-    // }
 
     return relu_layer;
 }
@@ -1112,6 +1089,7 @@ ReLU_QP* Initialize_ReLU_QP(
     // self.rho_ind = np.argmin(np.abs(self.layers.rhos.cpu().detach().numpy() - self.settings.rho))
     double* rhos_minus_rho = vector_subtract_scalar(relu_qp->layers->rhos, relu_qp->settings->rho, relu_qp->layers->rhos_len);
     relu_qp->rho_ind = argmin(vector_abs(rhos_minus_rho, relu_qp->layers->rhos_len), relu_qp->layers->rhos_len);
+
     gettimeofday(&relu_qp->end, NULL);
     double elapsedTime = (double)(relu_qp->end.tv_sec - relu_qp->start.tv_sec) * 1000.0;
     elapsedTime += (((double)(relu_qp->end.tv_usec - relu_qp->start.tv_usec)) / 1000.0) / 1000.;
@@ -1159,6 +1137,8 @@ void update_results(ReLU_QP* relu_qp, int iter, double pri_res, double dua_res, 
     for (int i = nx; i < nx + nc; i++) {
         z[i - nx] = relu_qp->output[i];
     }
+    relu_qp->results->x = x;
+    relu_qp->results->z = z;
     relu_qp->results->info->obj_val = compute_J(relu_qp->qp->H, relu_qp->qp->g, x, nx);
     gettimeofday(&relu_qp->end, NULL);
     double elapsedTime = (double)(relu_qp->end.tv_sec - relu_qp->start.tv_sec) * 1000.0;
@@ -1166,15 +1146,15 @@ void update_results(ReLU_QP* relu_qp, int iter, double pri_res, double dua_res, 
     relu_qp->results->info->run_time = elapsedTime;
     relu_qp->results->info->solve_time = relu_qp->results->info->update_time + elapsedTime;
     
-    double* lam = create_vector(relu_qp->qp->nc);
+    // double* lam = create_vector(relu_qp->qp->nc);
     // TODO: Need to add the warm_starting check and then the clear_primal_dual function.
     if (relu_qp->settings->warm_starting) {
         clear_primal_dual(relu_qp);
     }
     
-    free(x);
-    free(z);
-    free(lam);
+    // free(x);
+    // free(z);
+    // free(lam);
 }
 
 
@@ -1259,7 +1239,6 @@ Results* solve(ReLU_QP* relu_qp) {
     for (int i = nx+nc; i < nx + nc * 2; i++) {
         lam[i - (nx + nc)] = relu_qp->output[i];
     }
-
     double primal_res, dual_res;
 
     for (int k = 1; k <= settings->max_iter; k++) {
@@ -1270,9 +1249,11 @@ Results* solve(ReLU_QP* relu_qp) {
             for (int i = 0; i < relu_qp->qp->nx; i++) {
                 x[i] = relu_qp->output[i];
             }
+            double* z = (double*)malloc(relu_qp->qp->nc * sizeof(double));
             for (int i = nx; i < nx + nc; i++) {
                 z[i - nx] = relu_qp->output[i];
             }
+            double* lam = create_vector(relu_qp->qp->nc);
             for (int i = nx+nc; i < nx + nc * 2; i++) {
                 lam[i - (nx + nc)] = relu_qp->output[i];
             }
@@ -1297,6 +1278,7 @@ Results* solve(ReLU_QP* relu_qp) {
             }
 
             // Check for convergence
+            // printf("Priting x: ")
             if (primal_res < settings->eps_abs * sqrt(nc) && dual_res < settings->eps_abs * sqrt(nx)) {
                 update_results(relu_qp, k, primal_res, dual_res, rho);
                 return relu_qp->results;
@@ -1324,12 +1306,6 @@ int main()
     int nx = 3;
     int nc = 5;
     int nf = 3;
-    // double H[3][3] = {{6, 2, 1}, {2, 5, 2}, {1, 2, 4.0}};
-    // double A[5][3] = { {1, 0, 1}, {0, 1, 1}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1} };
-    // double l[5] = {3.0, 0, -10., -10, -10 };
-    // double u[5] = {3., 0, INFINITY, INFINITY, INFINITY};
-    // double g[3] = {-8.0, -3., -3.};
-    
     double** H = get_H(nx, nf);
     double** A = get_A(nc, nf);
     double* g = get_g(nx);
@@ -1393,39 +1369,60 @@ int main()
         rho_estimate
     );
     
-    // Results* results = InitializeResults(
-    //     x,
-    //     z,
-    //     info
-    // );
+    // QP* qp = InitializeQP(H, g, A, l, u, nx, nc, nf);
+    // printf("qp->nc is: %d\n", qp->nc);
+    // ReLU_Layer* layers = Initialize_ReLU_Layer(qp, settings);
+    // printf("Printing rhos array of length %d:\n", layers->rhos_len);
+    // for (int i = 0; i < layers->rhos_len; i++) {
+    //     // if (i == layers->rhos_len - 1) {
+    //     //     printf("%lf ", layers->rhos[i-1] * 5);
+    //     //     printf("%lf ", layers->rhos[i] + 5);
+    //     // }
+    //     // else {
+    //     //     printf("%lf ", layers->rhos[i]);
+    //     // }
+    //     printf("%lf ", layers->rhos[i]);
+    // }
+    // printf("\n");
 
-    QP* qp = InitializeQP(H, g, A, l, u, nx, nc, nf);
-    printf("qp->nc is: %d\n", qp->nc);
-    ReLU_Layer* layers = Initialize_ReLU_Layer(qp, settings);
-    printf("Printing rhos array of length %d:\n", layers->rhos_len);
-    for (int i = 0; i < layers->rhos_len; i++) {
-        // if (i == layers->rhos_len - 1) {
-        //     printf("%lf ", layers->rhos[i-1] * 5);
-        //     printf("%lf ", layers->rhos[i] + 5);
-        // }
-        // else {
-        //     printf("%lf ", layers->rhos[i]);
-        // }
-        printf("%lf ", layers->rhos[i]);
-    }
-    printf("\n");
+    // double* input = create_vector((nx + 2 * nc));
+    // for (int i = 0; i < nx + 2 * nc; i++) {
+    //     input[i] = 1;
+    // }
+    // double* y = ReLU_Layer_Forward(layers, input, 0);
+    // for (int i = 0; i < nx + 2 * nc; i++) {
+    //     printf("%lf ", y[i]);
+    // }
+    // printf("\n");
+    ReLU_QP* relu_qp = (ReLU_QP*)malloc(sizeof(ReLU_QP));
+    Results* solve_results = (Results*) malloc(sizeof(Results));
 
-    double* input = create_vector((nx + 2 * nc));
-    for (int i = 0; i < nx + 2 * nc; i++) {
-        input[i] = 1;
+    for (int i = 0; i < 10; i++) {
+        relu_qp = Initialize_ReLU_QP(
+            H, g, A, l, u,
+            warm_starting,
+            scaling,
+            rho,
+            rho_min,
+            rho_max,
+            sigma,
+            adaptive_rho,
+            adaptive_rho_interval,
+            adaptive_rho_tolerance,
+            max_iter,
+            eps_abs,
+            check_interval,
+            verbose,
+            eq_tol,
+            nc,
+            nf,
+            nx
+        );
+        solve_results = solve(relu_qp);
+        printf("The setup time taken is: %lf\n", solve_results->info->setup_time);
+        printf("The solve time taken is: %lf\n", solve_results->info->solve_time);
     }
-    double* y = ReLU_Layer_Forward(layers, input, 0);
-    for (int i = 0; i < nx + 2 * nc; i++) {
-        printf("%lf ", y[i]);
-    }
-    printf("\n");
-
-    ReLU_QP* relu_qp = Initialize_ReLU_QP(
+    relu_qp = Initialize_ReLU_QP(
         H, g, A, l, u,
         warm_starting,
         scaling,
@@ -1445,78 +1442,35 @@ int main()
         nf,
         nx
     );
-
-    update_results(relu_qp, iter, pri_res, dua_res, rho_estimate);
-
-    printf("The RELU_QP IS:\n");
-    printf("ReLU_QP rho_ind: %d\n", relu_qp->rho_ind);
-    printf("The setup time taken is: %lf\n", relu_qp->info->setup_time);
-    printf("The update time taken is: %lf\n", relu_qp->results->info->solve_time);
-    printf("The objective val is: %lf\n", relu_qp->results->info->obj_val);
-
-    // Test the compute_J function
-    // double** H_test = create_matrix(2, 2);
-    // H_test[0][0] = 1;
-    // H_test[0][1] = 2;
-    // H_test[1][0] = 2;
-    // H_test[1][1] = 4;
-    // double* g_test = create_vector(2);
-    // g_test[0] = 1;
-    // g_test[1] = 1;
-    // double* x_test = create_vector(2);
-    // x_test[0] = 1;
-    // x_test[1] = 1;
-    // double J = compute_J(H_test, g_test, x_test, 2);
-    // printf("The J is: %lf\n", J);
-
-    // int nc_test = 2;
-    // int nx_test = 3;
-    // double** H_test = (double**)malloc(nx_test * sizeof(double*));
-    // double** A_test = (double**)malloc(nc_test * sizeof(double*));
-    // double* g_test = (double*)malloc(nx_test * sizeof(double));
-    // double* x_test = (double*)malloc(nx_test * sizeof(double));
-    // double* z_test = (double*)malloc(nc_test * sizeof(double));
-    // double* lam_test = (double*)malloc(nc_test * sizeof(double));
-    // double rho_test = 1.0, rho_min_test = 0.1, rho_max_test = 10.0;
-
-    // for (int i = 0; i < nx_test; i++) {
-    //     H_test[i] = (double*)malloc(nx_test * sizeof(double));
-    //     for (int j = 0; j < nx_test; j++) {
-    //         H_test[i][j] = (i == j) ? 2.0 : 0.0;
-    //     }
-    //     g_test[i] = 1.0;
-    //     x_test[i] = 1.0;
-    // }
-    // for (int i = 0; i < nc_test; i++) {
-    //     A_test[i] = (double*)malloc(nx_test * sizeof(double));
-    //     for (int j = 0; j < nx_test; j++) {
-    //         A_test[i][j] = 1.0;
-    //     }
-    //     z_test[i] = 1.5;
-    //     lam_test[i] = 0.5;
-    // }
-
-    // double primal_res_test, dual_res_test;
-
-    // compute_residuals(
-    //     H_test, A_test, g_test, x_test, z_test, lam_test, &rho_test, 
-    //     rho_min_test, rho_max_test, nx_test, nc_test, &primal_res_test, 
-    //     &dual_res_test
-    // );
-
-    // printf("Primal Residual: %f\n", primal_res_test);
-    // printf("Dual Residual: %f\n", dual_res_test);
-    // printf("Updated Rho: %f\n", rho_test);
-
-    Results* solve_results = solve(relu_qp);
-    printf("The solve time taken is: %lf\n", solve_results->info->solve_time);
+    solve_results = solve(relu_qp);
     printf("The result x is: ");
     for (int i = 0; i < nx; i++) {
         printf("%lf ", solve_results->x[i]);
     }
+    printf("\n");
+    printf("The solve time was: %lf\n", solve_results->info->solve_time);
+    printf("The setup time was: %lf\n", solve_results->info->setup_time);
+    printf("the number of iterations was: %d\n", solve_results->info->iter);
 
+    // Results* solve_results = solve(relu_qp);
+    // // printf("The solve time taken is: %lf\n", solve_results->info->solve_time);
+    // printf("The result x is: ");
+    // for (int i = 0; i < nx; i++) {
+    //     printf("%lf ", solve_results->x[i]);
+    // }
+    struct timeval start_time;
+    struct timeval end_time;
+    gettimeofday(&start_time, NULL);
+    for (int i = 0; i < 1000; i++) {
+        solve_results = solve(relu_qp);
+    }
+    gettimeofday(&end_time, NULL);
+    double elapsedTime = (double)(end_time.tv_sec - start_time.tv_sec) * 1000.0;
+    elapsedTime += (((double)(end_time.tv_usec - start_time.tv_usec)) / 1000.0) / 1000.;
+    double avg_time = elapsedTime / 1000.;
+    printf("The average time taken is: %lf\n", avg_time);
     
-    freeQP(qp);
+    // freeQP(qp);
     free_tensor(H, nx);
     free_tensor(A, nc);
     free(g);
@@ -1525,7 +1479,7 @@ int main()
     free_Settings(settings);
     free_Info(info);
     // free_Results(results);
-    free_ReLU_Layer(layers);
+    // free_ReLU_Layer(layers);
 
     // for(int loop = 0; loop < 10; loop++)
     //   printf("%f ", array[loop]);
