@@ -445,7 +445,11 @@ void matrix_vector_mult(double* A, double* B, double* C, int m, int n) {
     }
 }
 
-void compute_residuals(double** H, double** A, double* g, double* x, double* z, double* lam, double* rho, double rho_min, double rho_max, int nx, int nc, double* primal_res, double* dual_res) {
+void compute_residuals(
+    double** H, double** A, double* g, double* x, double* z, double* lam, 
+    double* rho, double rho_min, double rho_max, int nx, int nc, 
+    double* primal_res, double* dual_res
+) {
     double *t1 = (double*)malloc(nc * sizeof(double));
     double *t2 = (double*)malloc(nx * sizeof(double));
     double *t3 = (double*)malloc(nx * sizeof(double));
