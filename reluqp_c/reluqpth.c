@@ -185,18 +185,23 @@ double** get_A(int nc, int nf) {
     A[0][0] = 1;
     A[0][1] = 0;
     A[0][2] = 1;
+
     A[1][0] = 0;
     A[1][1] = 1;
     A[1][2] = 1;
+
     A[2][0] = 1;
     A[2][1] = 0;
     A[2][2] = 0;
+
     A[3][0] = 0;
     A[3][1] = 1;
     A[3][2] = 0;
+
     A[4][0] = 0;
     A[4][1] = 0;
     A[4][2] = 1;
+    
     return A;
 }
 
@@ -582,12 +587,12 @@ void mergeSortCPU(double* arr, double* temp, int left, int right)
     merge(arr, temp, left, mid, right);
 }
 
-void print_matrix(int r, int c, float matrix[r][c])
+void print_matrix(int r, int c, double** matrix)
 {
     for (int i = 0; i < r; i++)
     {
         for (int j = 0; j < c; j++) {
-            printf("%.3f ", matrix[i][j]);
+            printf("%lf ", matrix[i][j]);
         }
         printf("\n");
     }
@@ -763,10 +768,12 @@ ReLU_Layer* Initialize_ReLU_Layer (
 
     double*** kkts_rhs_invs = (double***)malloc(relu_layer->rhos_len * sizeof(double**));
     for (int i = 0; i < relu_layer->rhos_len; i++) {
-        kkts_rhs_invs[i] = (double**)malloc(nf * sizeof(double*));
-        for (int j = 0; j < nf; j++) {
-            kkts_rhs_invs[i][j] = (double*)malloc(nf * sizeof(double));
-        }
+        // kkts_rhs_invs[i] = (double**)malloc(nf * sizeof(double*));
+        // for (int j = 0; j < nf; j++) {
+        //     kkts_rhs_invs[i][j] = (double*)malloc(nf * sizeof(double));
+        //     for ()
+        // }
+        kkts_rhs_invs[i] = create_matrix(nf, nf);
     }
     // double kkts_rhs_invs[relu_layer->rhos_len][nf][nf];
     double* flag_checks = (double*)calloc(nc, sizeof(double));
@@ -780,13 +787,25 @@ ReLU_Layer* Initialize_ReLU_Layer (
     
 
     for (int i = 0; i < relu_layer->rhos_len; i++) {
+        // printf("################################\n");
+        // printf("i: %d\n", i);
         double rho_scalar = relu_layer->rhos[i];
         double* rho = (double*)calloc(nc, sizeof(double));
         for (int j = 0; j < nc; j++) {
             rho[j] = rho_scalar;
         }
         vector_where(conditional, rho, rho_scalar * 1e3, rho_scalar, nc);
+        // printing rho
+        // printf("Rho is: \n");
+        // for (int j = 0; j < nc; j++) {
+        //     printf("%lf ", rho[j]);
+        // }
+        // printf("\n\n");
         double** rho_mat = create_diagonal_matrix(rho, nc);
+        // printf("Rho mat is: \n");
+        // print_matrix(nc, nc, rho_mat);
+        // printf("\n\n");
+
         double* sigma_vector = (double*)calloc(nf, sizeof(double));
         for (int j = 0; j < nf; j++) {
             sigma_vector[j] = sigma;
@@ -794,28 +813,40 @@ ReLU_Layer* Initialize_ReLU_Layer (
         double** sigma_mat = create_diagonal_matrix(sigma_vector, nf);
         
         free(sigma_vector);
+        free(rho);
+
         double** A_transpose = transpose_matrix(A, nc, nf);
         double** rho_A = create_matrix(nc, nf);
-        matmul(rho_mat, A, rho_A, nc, nf, nf);
+        matmul(rho_mat, A, rho_A, nc, nc, nf);
         double** AT_rho_A = create_matrix(nf, nf);
         matmul(A_transpose, rho_A, AT_rho_A, nf, nc, nf);
-        // // free variables
-        free_tensor(rho_A, nc);
-        free_tensor(A_transpose, nf);
 
         double** summed_mat = create_matrix(nf, nf);
         add_matrices(H, sigma_mat, summed_mat, nf, nf);
         add_matrices(summed_mat, AT_rho_A, summed_mat, nf, nf);
         // need to take inverse now.... of summed mats
         double** summed_mat_inv = create_matrix(nf, nf);
-        // compute_matrix_inverse(summed_mat, summed_mat_inv, nf);
-        MatrixInverse3x3(summed_mat, summed_mat_inv);
-        for (int a = 0; a < nf; a++) {
-            for (int b = 0; b < nf; b++) {
-                kkts_rhs_invs[i][a][b] = summed_mat_inv[a][b];
-                // printf("a: %d, b: %d, val: %lf\n", a, b, summed_mat[a][b]);
-            }
-        }
+        compute_matrix_inverse(summed_mat, summed_mat_inv, nf);
+        // print A.T @ rho @ A:
+        // printf("-------------------------------\n");
+        // print_matrix(nf, nf, AT_rho_A);
+        // printf("--------------------------------\n");
+
+        // MatrixInverse3x3(summed_mat, summed_mat_inv);
+        // for (int a = 0; a < nf; a++) {
+        //     for (int b = 0; b < nf; b++) {
+        //         kkts_rhs_invs[i][a][b] = summed_mat_inv[a][b];
+        //         printf("a: %d, b: %d, val: %lf\n", a, b, summed_mat_inv[a][b]);
+        //     }
+        // }
+        // printf("################################\n");
+        kkts_rhs_invs[i] = summed_mat_inv;
+        // // free variables
+        free_tensor(rho_A, nc);
+        free_tensor(A_transpose, nf);
+        free_tensor(summed_mat, nf);
+        free_tensor(sigma_mat, nf);
+
     }
 
     // Define W_ks, B_ks, b_ks
