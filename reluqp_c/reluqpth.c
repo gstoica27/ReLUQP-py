@@ -265,9 +265,9 @@ void vector_where(bool* conditional, double* vector, double when_true, double wh
 }
 
 double** create_diagonal_matrix(double* vector, int dim) {
-    double** matrix = (double**)calloc(dim, dim * sizeof(double*));
+    double** matrix = create_matrix(dim, dim);
     for (int i = 0; i < dim; i++) {
-        matrix[i] = (double*)calloc(dim, sizeof(double));
+        // matrix[i] = (double*)calloc(dim, sizeof(double));
         matrix[i][i] = vector[i];
     }
     return matrix;
@@ -283,9 +283,9 @@ double** create_scalar_diagonal_matrix(double w, int dim) {
 }
 
 double** transpose_matrix(double** matrix, int num_row, int num_col) {
-    double** transpose = (double**)malloc(num_col * sizeof(double*));
+    double** transpose = create_matrix(num_col, num_row);
     for (int i = 0; i < num_col; i++) {
-        transpose[i] = (double*)malloc(num_row * sizeof(double));
+        // transpose[i] = (double*)malloc(num_row * sizeof(double));
         for (int j = 0; j < num_row; j++) {
             transpose[i][j] = matrix[j][i];
         }
@@ -310,7 +310,7 @@ void add_value_to_matrix(double** matrix, double** dest, double value, int num_r
 }
 
 double** copy_matrix(double** matrix, int num_row, int num_col) {
-    double** copy = (double**)calloc(num_row, num_col * sizeof(double*));
+    double** copy = create_matrix(num_row, num_col);
     for (int i = 0; i < num_row; i++) {
         copy[i] = (double*)calloc(num_col, sizeof(double));
         for (int j = 0; j < num_col; j++) {
@@ -1330,8 +1330,8 @@ int main()
     double run_time = 4;
     double rho_estimate = 5.;
     
-    double x = 420;
-    double z = 17;
+    // double x = 420;
+    // double z = 17;
     
     Settings* settings = InitializeSettings(
         verbose,
@@ -1362,11 +1362,11 @@ int main()
         rho_estimate
     );
     
-    Results* results = InitializeResults(
-        x,
-        z,
-        info
-    );
+    // Results* results = InitializeResults(
+    //     x,
+    //     z,
+    //     info
+    // );
 
     QP* qp = InitializeQP(H, g, A, l, u, nx, nc, nf);
     printf("qp->nc is: %d\n", qp->nc);
@@ -1480,7 +1480,7 @@ int main()
     Results* solve_results = solve(relu_qp);
     printf("The solve time taken is: %lf\n", solve_results->info->solve_time);
     printf("The result x is: ");
-    for (int i; i < nx; i++) {
+    for (int i = 0; i < nx; i++) {
         printf("%lf ", solve_results->x[i]);
     }
 
@@ -1493,7 +1493,7 @@ int main()
     free(u);
     free_Settings(settings);
     free_Info(info);
-    free_Results(results);
+    // free_Results(results);
     free_ReLU_Layer(layers);
 
     // for(int loop = 0; loop < 10; loop++)
