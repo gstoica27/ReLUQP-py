@@ -131,14 +131,14 @@ Info* InitializeInfo(
 
 
 typedef struct {
-    double x;
-    double z;
+    double* x;
+    double* z;
     Info* info;
 } Results;
 
 Results* InitializeResults(
-    double x,
-    double z,
+    double* x,
+    double* z,
     Info* info
 ) {
     Results* results = (Results*) malloc(sizeof(Results));
@@ -221,6 +221,25 @@ double* get_u(int nc) {
 }
 
 
+double** create_matrix(int num_row, int num_col) {
+    double** H = (double**)malloc(num_row * sizeof(double*));
+    for (int i=0; i< num_row; i++) {
+        H[i] = (double*)malloc(num_col * sizeof(double));
+        for (int j = 0; j < num_col; j++) {
+            H[i][j] = 0;
+        }
+    }
+    return H;
+}
+
+double* create_vector(int dim) {
+    double* vector = (double*)malloc(dim * sizeof(double));
+    for (int i = 0; i < dim; i++) {
+        vector[i] = 0;
+    }
+    return vector;
+}
+
 void vector_subtract(double* source, double* amount, double* dest, int dim) {
     for (int i = 0; i < dim; i++) {
         dest[i] = source[i] - amount[i];
@@ -255,9 +274,9 @@ double** create_diagonal_matrix(double* vector, int dim) {
 }
 
 double** create_scalar_diagonal_matrix(double w, int dim) {
-    double** matrix = (double**)calloc(dim, dim * sizeof(double*));
+    double** matrix = create_matrix(dim, dim);
     for (int i = 0; i < dim; i++) {
-        matrix[i] = (double*)calloc(dim, sizeof(double));
+        // matrix[i] = (double*)calloc(dim, sizeof(double));
         matrix[i][i] = w;
     }
     return matrix;
@@ -301,18 +320,7 @@ double** copy_matrix(double** matrix, int num_row, int num_col) {
     return copy;
 }
 
-double** create_matrix(int num_row, int num_col) {
-    double** H = (double**)malloc(num_row * sizeof(double*));
-    for (int i=0; i< num_row; i++) {
-        H[i] = (double*)malloc(num_col * sizeof(double));
-    }
-    return H;
-}
 
-double* create_vector(int dim) {
-    double* vector = (double*)malloc(dim * sizeof(double));
-    return vector;
-}
 
 
 void matmul(double** matrix1, double** matrix2, double** result, int left, int nelem, int right)
@@ -329,6 +337,7 @@ void matmul(double** matrix1, double** matrix2, double** result, int left, int n
 
 void matvecmul(double** matrix, double* vector, double* result, int left, int nelem) {
     for (int i = 0; i < left; i++) {
+        result[i] = 0;
         for (int j = 0; j < nelem; j++) {
             result[i] += matrix[i][j] * vector[j];
         }
@@ -347,7 +356,7 @@ double vector_dot(double* vec1, double* vec2, int dim) {
 void add_matrices(double** A, double** B, double** result, int num_row, int num_col) {
     for (int i = 0; i < num_row; i++) {
         for (int k = 0; k < num_col; k++) {
-            result[i][k] =A[i][k] + B[i][k];
+            result[i][k] = A[i][k] + B[i][k];
         }
     }
 }
@@ -970,10 +979,6 @@ ReLU_Layer* Initialize_ReLU_Layer (
 }
 
 double* ReLU_Layer_Forward(ReLU_Layer* layer, double* x, int idx) {
-    double **W = layer->W_ks[idx];
-    double *b = layer->b_ks[idx];
-    double *l = layer->qp->l;
-    double *u = layer->qp->u;
     int idx1 = layer->clamp_left;
     int idx2 = layer->clamp_right;
     int nx = layer->qp->nx;
@@ -981,15 +986,15 @@ double* ReLU_Layer_Forward(ReLU_Layer* layer, double* x, int idx) {
 
     int D = nx + 2*nc;
     double* intermediate = create_vector(D);
-    matvecmul(W, x, intermediate, D, D);
-    vector_add(intermediate, b, intermediate, D);
+    matvecmul(layer->W_ks[idx], x, intermediate, D, D);
+    vector_add(intermediate, layer->b_ks[idx], intermediate, D);
 
     for (int i = idx1; i < idx2; i++) {
         double val = intermediate[i];
-        if (val < l[i - idx1]) {
-            intermediate[i] = l[i - idx1];
-        } else if (val > u[i - idx1]) {
-            intermediate[i] = u[i - idx1];
+        if (val < layer->qp->l[i - idx1]) {
+            intermediate[i] = layer->qp->l[i - idx1];
+        } else if (val > layer->qp->u[i - idx1]) {
+            intermediate[i] = layer->qp->u[i - idx1];
         }
     }
     return intermediate;
@@ -1059,7 +1064,11 @@ ReLU_QP* Initialize_ReLU_QP(
         check_interval
     );
     relu_qp->info = InitializeInfo(0,0,0,0,0,0,0,0,0);
-    relu_qp->results = InitializeResults(0,0,relu_qp->info);
+    relu_qp->results = InitializeResults(
+        create_vector(nx), 
+        create_vector(nc), 
+        relu_qp->info
+    );
     relu_qp->qp = InitializeQP(H, g, A, l, u, nx, nc, nf);
     relu_qp->layers = Initialize_ReLU_Layer(relu_qp->qp, relu_qp->settings);
     // double* x = create_vector(nx);
@@ -1076,6 +1085,8 @@ ReLU_QP* Initialize_ReLU_QP(
     double elapsedTime = (double)(relu_qp->end.tv_sec - relu_qp->start.tv_sec) * 1000.0;
     elapsedTime += (((double)(relu_qp->end.tv_usec - relu_qp->start.tv_usec)) / 1000.0) / 1000.;
     relu_qp->info->setup_time = elapsedTime;
+
+    free(rhos_minus_rho);
     return relu_qp;
 }
 
@@ -1084,6 +1095,7 @@ double compute_J(double** H, double* g, double* x, int nx) {
     matvecmul(H, x, Hx, nx, nx);
     double Hx_dot_x = vector_dot(Hx, x, nx);
     double gx = vector_dot(g, x, nx);
+    free(Hx);
     return 0.5 * Hx_dot_x + gx;
 }
 
@@ -1095,6 +1107,7 @@ void clear_primal_dual(ReLU_QP* relu_qp) {
     // self.rho_ind = np.argmin(np.abs(self.layers.rhos.cpu().detach().numpy() - self.settings.rho))
     double* rhos_minus_rho = vector_subtract_scalar(relu_qp->layers->rhos, relu_qp->settings->rho, relu_qp->layers->rhos_len);
     relu_qp->rho_ind = argmin(vector_abs(rhos_minus_rho, relu_qp->layers->rhos_len), relu_qp->layers->rhos_len);
+    free(rhos_minus_rho);
 }
 
 
@@ -1127,11 +1140,150 @@ void update_results(ReLU_QP* relu_qp, int iter, double pri_res, double dua_res, 
     if (relu_qp->settings->warm_starting) {
         clear_primal_dual(relu_qp);
     }
+    
+    free(x);
+    free(z);
+    free(lam);
 }
 
 
+double vector_inf_norm(double* vec, int length) {
+    double max_val = 0.0;
+    for (int i = 0; i < length; i++) {
+        double abs_val = fabs(vec[i]);
+        if (abs_val > max_val) {
+            max_val = abs_val;
+        }
+    }
+    return max_val;
+}
 
 
+void compute_residuals(
+    double** H, double** A, double* g, double* x, double* z, double* lam, 
+    double* rho, double rho_min, double rho_max, int nx, int nc, 
+    double* primal_res, double* dual_res
+) {
+    double *t1 = (double*)malloc(nc * sizeof(double));
+    double *t2 = (double*)malloc(nx * sizeof(double));
+    double *t3 = (double*)malloc(nx * sizeof(double));
+    double *temp_primal = (double*)malloc(nc * sizeof(double));
+    double *temp_dual = (double*)malloc(nx * sizeof(double));
+    matvecmul(A, x, t1, nc, nx);
+    matvecmul(H, x, t2, nx, nx);
+    // double** AT = transpose_matrix(A, nc, nx);
+    // matvecmul(AT, lam, t3, nx, nc);
+    for (int i = 0; i < nx; i++) {
+        t3[i] = 0.0;
+        for (int j = 0; j < nc; j++) {
+            t3[i] += A[j][i] * lam[j];
+        }
+    }
+
+    for (int i = 0; i < nc; i++) {
+        temp_primal[i] = t1[i] - z[i];
+    }
+    *primal_res = vector_inf_norm(temp_primal, nc);
+
+    for (int i = 0; i < nx; i++) {
+        temp_dual[i] = t2[i] + t3[i] + g[i];
+    }
+    *dual_res = vector_inf_norm(temp_dual, nx);
+    double numerator = *primal_res / fmax(vector_inf_norm(t1, nc), vector_inf_norm(z, nc));
+    double denom = *dual_res / fmax(fmax(vector_inf_norm(t2, nx), vector_inf_norm(t3, nx)), vector_inf_norm(g, nx));
+
+    *rho = fmax(fmin(sqrt(numerator / denom) * (*rho), rho_max), rho_min);
+    // double denom = *dual_res / fmax(fmax(vector_inf_norm(t2, nx), vector_inf_norm(t3, nx)), vector_inf_norm(g, nx));
+
+    // *rho = fmax(fmin(sqrt(numerator / denom) * (*rho), rho_max), rho_min);
+
+    free(t1);
+    free(t2);
+    free(t3);
+    free(temp_primal);
+    free(temp_dual);
+}
+
+
+Results* solve(ReLU_QP* relu_qp) {
+    // LARGE_INTEGER frequency, t1, t2;
+    // QueryPerformanceFrequency(&frequency); // Get the frequency for timing calculations
+    // QueryPerformanceCounter(&t1); // Start the performance counter
+    gettimeofday(&relu_qp->start, NULL);
+
+    Settings* settings = relu_qp->settings;
+    int nx = relu_qp->qp->nx;
+    int nc = relu_qp->qp->nc;
+    double rho = relu_qp->layers->rhos[relu_qp->rho_ind]; // Starting rho from adaptive rho array
+
+    double* x = (double*)malloc(relu_qp->qp->nx * sizeof(double));
+    for (int i = 0; i < relu_qp->qp->nx; i++) {
+        x[i] = relu_qp->output[i];
+    }
+    double* z = (double*)malloc(relu_qp->qp->nc * sizeof(double));
+    for (int i = nx; i < nx + nc; i++) {
+        z[i - nx] = relu_qp->output[i];
+    }
+    double* lam = create_vector(relu_qp->qp->nc);
+    for (int i = nx+nc; i < nx + nc * 2; i++) {
+        lam[i - (nx + nc)] = relu_qp->output[i];
+    }
+
+    double primal_res, dual_res;
+
+    for (int k = 1; k <= settings->max_iter; k++) {
+        // Assume a function to update output based on current state
+        relu_qp->output = ReLU_Layer_Forward(relu_qp->layers, relu_qp->output, relu_qp->rho_ind);
+        // Perform computations as required
+        if (k % settings->check_interval ==  0 && settings->adaptive_rho) {
+            for (int i = 0; i < relu_qp->qp->nx; i++) {
+                x[i] = relu_qp->output[i];
+            }
+            for (int i = nx; i < nx + nc; i++) {
+                z[i - nx] = relu_qp->output[i];
+            }
+            for (int i = nx+nc; i < nx + nc * 2; i++) {
+                lam[i - (nx + nc)] = relu_qp->output[i];
+            }
+
+            compute_residuals(
+                relu_qp->qp->H, relu_qp->qp->A, relu_qp->qp->g, x, z, lam, &rho, 
+                settings->rho_min, settings->rho_max, nx, nc, &primal_res, &dual_res
+            );
+
+            // Adaptive rho adjustment
+            if ((rho > relu_qp->layers->rhos[relu_qp->rho_ind] * settings->adaptive_rho_tolerance) && (relu_qp->rho_ind < relu_qp->layers->rhos_len - 1)) {
+                relu_qp->rho_ind++;
+                relu_qp->rho_ind = fmin(relu_qp->rho_ind, relu_qp->layers->rhos_len - 1);
+                
+            } else if ((rho < (relu_qp->layers->rhos[relu_qp->rho_ind] / settings->adaptive_rho_tolerance)) && (relu_qp->rho_ind > 0)) {
+                relu_qp->rho_ind--;
+            }
+
+            // Verbose output
+            if (settings->verbose) {
+                printf("Iter: %d, rho: %.2e, res_p: %.2e, res_d: %.2e\n", k, rho, primal_res, dual_res);
+            }
+
+            // Check for convergence
+            if (primal_res < settings->eps_abs * sqrt(nc) && dual_res < settings->eps_abs * sqrt(nx)) {
+                update_results(relu_qp, k, primal_res, dual_res, rho);
+                return relu_qp->results;
+            }
+        }
+    }
+
+    compute_residuals(
+        relu_qp->qp->H, relu_qp->qp->A, relu_qp->qp->g, x, z, lam, &rho, 
+        settings->rho_min, settings->rho_max, nx, nc, &primal_res, &dual_res
+    );
+    update_results(relu_qp, settings->max_iter, primal_res, dual_res, rho);
+    return relu_qp->results;
+
+    // QueryPerformanceCounter(&t2); // Stop the performance counter
+    // double elapsedTime = (double)(t2.QuadPart - t1.QuadPart) * 1000.0 / frequency.QuadPart;
+    // problem->info->solve_time = elapsedTime;
+}
 
 
 
@@ -1272,19 +1424,65 @@ int main()
     printf("The objective val is: %lf\n", relu_qp->results->info->obj_val);
 
     // Test the compute_J function
-    double** H_test = create_matrix(2, 2);
-    H_test[0][0] = 1;
-    H_test[0][1] = 2;
-    H_test[1][0] = 2;
-    H_test[1][1] = 4;
-    double* g_test = create_vector(2);
-    g_test[0] = 1;
-    g_test[1] = 1;
-    double* x_test = create_vector(2);
-    x_test[0] = 1;
-    x_test[1] = 1;
-    double J = compute_J(H_test, g_test, x_test, 2);
-    printf("The J is: %lf\n", J);
+    // double** H_test = create_matrix(2, 2);
+    // H_test[0][0] = 1;
+    // H_test[0][1] = 2;
+    // H_test[1][0] = 2;
+    // H_test[1][1] = 4;
+    // double* g_test = create_vector(2);
+    // g_test[0] = 1;
+    // g_test[1] = 1;
+    // double* x_test = create_vector(2);
+    // x_test[0] = 1;
+    // x_test[1] = 1;
+    // double J = compute_J(H_test, g_test, x_test, 2);
+    // printf("The J is: %lf\n", J);
+
+    // int nc_test = 2;
+    // int nx_test = 3;
+    // double** H_test = (double**)malloc(nx_test * sizeof(double*));
+    // double** A_test = (double**)malloc(nc_test * sizeof(double*));
+    // double* g_test = (double*)malloc(nx_test * sizeof(double));
+    // double* x_test = (double*)malloc(nx_test * sizeof(double));
+    // double* z_test = (double*)malloc(nc_test * sizeof(double));
+    // double* lam_test = (double*)malloc(nc_test * sizeof(double));
+    // double rho_test = 1.0, rho_min_test = 0.1, rho_max_test = 10.0;
+
+    // for (int i = 0; i < nx_test; i++) {
+    //     H_test[i] = (double*)malloc(nx_test * sizeof(double));
+    //     for (int j = 0; j < nx_test; j++) {
+    //         H_test[i][j] = (i == j) ? 2.0 : 0.0;
+    //     }
+    //     g_test[i] = 1.0;
+    //     x_test[i] = 1.0;
+    // }
+    // for (int i = 0; i < nc_test; i++) {
+    //     A_test[i] = (double*)malloc(nx_test * sizeof(double));
+    //     for (int j = 0; j < nx_test; j++) {
+    //         A_test[i][j] = 1.0;
+    //     }
+    //     z_test[i] = 1.5;
+    //     lam_test[i] = 0.5;
+    // }
+
+    // double primal_res_test, dual_res_test;
+
+    // compute_residuals(
+    //     H_test, A_test, g_test, x_test, z_test, lam_test, &rho_test, 
+    //     rho_min_test, rho_max_test, nx_test, nc_test, &primal_res_test, 
+    //     &dual_res_test
+    // );
+
+    // printf("Primal Residual: %f\n", primal_res_test);
+    // printf("Dual Residual: %f\n", dual_res_test);
+    // printf("Updated Rho: %f\n", rho_test);
+
+    Results* solve_results = solve(relu_qp);
+    printf("The solve time taken is: %lf\n", solve_results->info->solve_time);
+    printf("The result x is: ");
+    for (int i; i < nx; i++) {
+        printf("%lf ", solve_results->x[i]);
+    }
 
     
     freeQP(qp);
