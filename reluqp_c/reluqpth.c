@@ -335,6 +335,14 @@ void matvecmul(double** matrix, double* vector, double* result, int left, int ne
     }
 }
 
+double vector_dot(double* vec1, double* vec2, int dim) {
+    double dot = 0;
+    for (int i = 0; i < dim; i++) {
+        dot += (vec1[i] * vec2[i]);
+    }
+    return dot;
+}
+
 
 void add_matrices(double** A, double** B, double** result, int num_row, int num_col) {
     for (int i = 0; i < num_row; i++) {
@@ -1068,6 +1076,43 @@ ReLU_QP* Initialize_ReLU_QP(
     return relu_qp;
 }
 
+double compute_J(double** H, double* g, double* x, int nx) {
+    double* Hx = create_vector(nx);
+    matvecmul(H, x, Hx, nx, nx);
+    double Hx_dot_x = vector_dot(Hx, x, nx);
+    double gx = vector_dot(g, x, nx);
+    return 0.5 * Hx_dot_x + gx;
+}
+
+
+void update_results(ReLU_QP* relu_qp, int iter, double pri_res, double dua_res, double rho_estimate) {
+    // gettimeofday(&relu_qp->start, NULL);
+    relu_qp->results->info->iter = iter;
+    relu_qp->results->info->pri_res = pri_res;
+    relu_qp->results->info->dua_res = dua_res;
+    relu_qp->results->info->rho_estimate = rho_estimate;
+
+    int nx = relu_qp->qp->nx;
+    int nc = relu_qp->qp->nc;
+    double* x = (double*)malloc(relu_qp->qp->nx * sizeof(double));
+    for (int i = 0; i < relu_qp->qp->nx; i++) {
+        x[i] = relu_qp->output[i];
+    }
+    double* z = (double*)malloc(relu_qp->qp->nc * sizeof(double));
+    for (int i = nx; i < nx + nc; i++) {
+        z[i - nx] = relu_qp->output[i];
+    }
+    relu_qp->results->info->obj_val = compute_J(relu_qp->qp->H, relu_qp->qp->g, x, nx);
+    gettimeofday(&relu_qp->end, NULL);
+    double elapsedTime = (double)(relu_qp->end.tv_sec - relu_qp->start.tv_sec) * 1000.0;
+    elapsedTime += (((double)(relu_qp->end.tv_usec - relu_qp->start.tv_usec)) / 1000.0) / 1000.;
+    relu_qp->results->info->run_time = elapsedTime;
+    relu_qp->results->info->solve_time = relu_qp->results->info->update_time + elapsedTime;
+    
+    double* lam = create_vector(relu_qp->qp->nc);
+    // TODO: Need to add the warm_starting check and then the clear_primal_dual function.
+}
+
 
 
 
@@ -1202,9 +1247,28 @@ int main()
         nx
     );
 
+    update_results(relu_qp, iter, pri_res, dua_res, rho_estimate);
+
     printf("The RELU_QP IS:\n");
     printf("ReLU_QP rho_ind: %d\n", relu_qp->rho_ind);
     printf("The setup time taken is: %lf\n", relu_qp->info->setup_time);
+    printf("The update time taken is: %lf\n", relu_qp->results->info->solve_time);
+    printf("The objective val is: %lf\n", relu_qp->results->info->obj_val);
+
+    // Test the compute_J function
+    double** H_test = create_matrix(2, 2);
+    H_test[0][0] = 1;
+    H_test[0][1] = 2;
+    H_test[1][0] = 2;
+    H_test[1][1] = 4;
+    double* g_test = create_vector(2);
+    g_test[0] = 1;
+    g_test[1] = 1;
+    double* x_test = create_vector(2);
+    x_test[0] = 1;
+    x_test[1] = 1;
+    double J = compute_J(H_test, g_test, x_test, 2);
+    printf("The J is: %lf\n", J);
 
     
     freeQP(qp);
