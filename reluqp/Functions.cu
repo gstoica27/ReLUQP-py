@@ -10,7 +10,8 @@
 #include <cusolverDn.h>
 #include <cuda_runtime.h>
 #include <iostream>
-
+#include <windows.h>
+//#include <sys/time.h>
 
 
 // Function to concatenate two matrices in C
@@ -484,7 +485,7 @@ void compute_residuals(double** H, double** A, double* g, double* x, double* z, 
 }
 
 
-/* Example of compute_residuals
+/* Example of Compute residuals
 int main() {
     int nx = 3;
     int nc = 2;
@@ -539,3 +540,246 @@ int main() {
 }
 
 */
+
+
+
+
+
+
+/*
+typedef struct  {
+    time_t      tv_sec;     
+    suseconds_t tv_usec;    
+} timeval;
+
+*/
+
+
+
+typedef struct {
+    bool verbose;
+    bool warm_starting;
+    bool scaling;
+    double rho;
+    double rho_min;
+    double rho_max;
+    double sigma;
+    bool adaptive_rho;
+    int adaptive_rho_interval;
+    double adaptive_rho_tolerance;
+    int max_iter;
+    double eps_abs;
+    double eq_tol;
+    int check_interval;
+} Settings;
+
+
+
+typedef struct {
+    int iter;
+    double obj_val;
+    double pri_res;
+    double dua_res;
+    double setup_time;
+    double solve_time;
+    double update_time;
+    double run_time;
+    double rho_estimate;
+} Info;
+
+
+
+typedef struct {
+    double x;
+    double z;
+    Info* info;
+} Results;
+
+typedef struct {
+    double** H;
+    double* g;
+    double** A;
+    double* l;
+    double* u;
+    int nx;
+    int nc;
+    int nf;
+} QP;
+
+
+
+typedef struct
+{
+    QP* qp;
+    Settings* settings;
+    double* rhos;
+    int rhos_len;
+    double*** W_ks;
+    double*** B_ks;
+    double** b_ks;
+    int clamp_left;
+    int clamp_right;
+} ReLU_Layer;
+
+
+
+
+typedef struct
+{
+    Info* info;
+    Results* results;
+    Settings* settings;
+    ReLU_Layer* layers;
+    QP* qp;
+    //struct timeval start;
+    //struct timeval end;
+    // double* x;
+    // double* z;
+    // double* lam;
+    LARGE_INTEGER start;  // For timing the solve process
+    LARGE_INTEGER end;    // For timing the solve process
+    double* output;
+    int rho_ind;
+} ReLU_QP;
+
+
+
+
+
+
+
+
+double dot_product(double* a, double* b, int n) {
+    double sum = 0.0;
+    for (int i = 0; i < n; i++) {
+        sum += a[i] * b[i];
+    }
+    return sum;
+}
+
+
+
+double vector_dot(double* vec1, double* vec2, int dim) {
+    double dot = 0;
+    for (int i = 0; i < dim; i++) {
+        dot += (vec1[i] * vec2[i]);
+    }
+    return dot;
+}
+
+
+
+double* create_vector(int dim) {
+    double* vector = (double*)malloc(dim * sizeof(double));
+    return vector;
+}
+
+
+
+void matvecmul(double** matrix, double* vector, double* result, int left, int nelem) {
+    for (int i = 0; i < left; i++) {
+        for (int j = 0; j < nelem; j++) {
+            result[i] += matrix[i][j] * vector[j];
+        }
+    }
+}
+
+
+
+double compute_J(double** H, double* g, double* x, int nx) {
+    double* Hx = create_vector(nx);
+    matvecmul(H, x, Hx, nx, nx);
+    double Hx_dot_x = vector_dot(Hx, x, nx);
+    double gx = vector_dot(g, x, nx);
+    return 0.5 * Hx_dot_x + gx;
+}
+
+
+
+
+
+
+void update_results(ReLU_QP* relu_qp, int iter, double pri_res, double dua_res, double rho_estimate) {
+    // gettimeofday(&relu_qp->start, NULL);
+    relu_qp->results->info->iter = iter;
+    relu_qp->results->info->pri_res = pri_res;
+    relu_qp->results->info->dua_res = dua_res;
+    relu_qp->results->info->rho_estimate = rho_estimate;
+
+    int nx = relu_qp->qp->nx;
+    int nc = relu_qp->qp->nc;
+    double* x = (double*)malloc(relu_qp->qp->nx * sizeof(double));
+    for (int i = 0; i < relu_qp->qp->nx; i++) {
+        x[i] = relu_qp->output[i];
+    }
+    double* z = (double*)malloc(relu_qp->qp->nc * sizeof(double));
+    for (int i = nx; i < nx + nc; i++) {
+        z[i - nx] = relu_qp->output[i];
+    }
+    relu_qp->results->info->obj_val = compute_J(relu_qp->qp->H, relu_qp->qp->g, x, nx);
+    gettimeofday(&relu_qp->end, NULL);
+    double elapsedTime = (double)(relu_qp->end.tv_sec - relu_qp->start.tv_sec) * 1000.0;
+    elapsedTime += (((double)(relu_qp->end.tv_usec - relu_qp->start.tv_usec)) / 1000.0) / 1000.;
+    relu_qp->results->info->run_time = elapsedTime;
+    relu_qp->results->info->solve_time = relu_qp->results->info->update_time + elapsedTime;
+    
+    double* lam = create_vector(relu_qp->qp->nc);
+    // TODO: Need to add the warm_starting check and then the clear_primal_dual function.
+}
+
+
+
+
+
+
+
+
+
+
+
+
+void solve(ReLU_QP* problem) {
+    LARGE_INTEGER frequency;
+    LARGE_INTEGER t1, t2;
+    double elapsedTime;
+
+    // Start the performance counter
+    QueryPerformanceFrequency(&frequency);
+    QueryPerformanceCounter(&t1);
+
+    Settings* stng = problem->settings;
+    int nx = problem->qp->nx;
+    int nc = problem->qp->nc;
+    double rho = problem->settings->rho;  // Starting rho, adjust as per rho_ind if needed
+
+    for (int k = 1; k <= stng->max_iter; k++) {
+        // Assuming an operation to update x, z, lam from output
+        memcpy(problem->x, problem->output, nx * sizeof(double));
+        memcpy(problem->z, problem->output + nx, nc * sizeof(double));
+        memcpy(problem->lam, problem->output + nx + nc, nc * sizeof(double));
+
+        // Perform computations as required
+        if (k % stng->check_interval == 0) {
+            double primal_res, dual_res;
+            compute_residuals(problem->qp->H, problem->qp->A, problem->qp->g, problem->x, problem->z, problem->lam, &rho, stng->rho_min, stng->rho_max, nx, nc, &primal_res, &dual_res);
+
+            // Log details if verbose
+            if (stng->verbose) {
+                printf("Iter: %d, rho: %.2e, res_p: %.2e, res_d: %.2e\n", k, rho, primal_res, dual_res);
+            }
+
+            // Check for convergence
+            if (primal_res < stng->eps_abs && dual_res < stng->eps_abs) {
+                update_results(problem->info, k, "solved", primal_res, dual_res, rho);
+                break;
+            }
+        }
+    }
+
+    // Stop the performance counter
+    QueryPerformanceCounter(&t2);
+    elapsedTime = (double)(t2.QuadPart - t1.QuadPart) * 1000.0 / frequency.QuadPart;
+    problem->info->solve_time = elapsedTime;
+}
+
+
