@@ -13,19 +13,19 @@
 
 /// @brief Declare all structs ///
 typedef struct {
-    double** H;
-    double* g;
-    double** A;
-    double* l;
-    double* u;
+    float** H;
+    float* g;
+    float** A;
+    float* l;
+    float* u;
     int nx;
     int nc;
-    int nf;
+    // int nf;
 } QP;
 
 
 QP* InitializeQP(
-    double** H, double* g, double**A, double* l, double* u, int nx, int nc, int nf
+    float** H, float* g, float**A, float* l, float* u, int nx, int nc//, int nf
 ) {
     QP* qp = (QP*)malloc(sizeof(QP));
     qp->H = H;
@@ -35,7 +35,7 @@ QP* InitializeQP(
     qp->u = u;
     qp->nx = nx;
     qp->nc = nc;
-    qp->nf = nf;
+    // qp->nf = nf;
     return qp;
 }
 
@@ -44,16 +44,16 @@ typedef struct {
     bool verbose;
     bool warm_starting;
     bool scaling;
-    double rho;
-    double rho_min;
-    double rho_max;
-    double sigma;
+    float rho;
+    float rho_min;
+    float rho_max;
+    float sigma;
     bool adaptive_rho;
     int adaptive_rho_interval;
-    double adaptive_rho_tolerance;
+    float adaptive_rho_tolerance;
     int max_iter;
-    double eps_abs;
-    double eq_tol;
+    float eps_abs;
+    float eq_tol;
     int check_interval;
 } Settings;
 
@@ -61,16 +61,16 @@ Settings* InitializeSettings(
     bool verbose, 
     bool warm_starting,
     bool scaling,
-    double rho,
-    double rho_min,
-    double rho_max,
-    double sigma,
+    float rho,
+    float rho_min,
+    float rho_max,
+    float sigma,
     bool adaptive_rho,
     int adaptive_rho_interval,
-    double adaptive_rho_tolerance,
+    float adaptive_rho_tolerance,
     int max_iter,
-    double eps_abs,
-    double eq_tol,
+    float eps_abs,
+    float eq_tol,
     int check_interval
 ) {
     Settings* settings = (Settings*)malloc(sizeof(Settings));
@@ -94,27 +94,27 @@ Settings* InitializeSettings(
 
 typedef struct {
     int iter;
-    double obj_val;
-    double pri_res;
-    double dua_res;
-    double setup_time;
-    double solve_time;
-    double update_time;
-    double run_time;
-    double rho_estimate;
+    float obj_val;
+    float pri_res;
+    float dua_res;
+    float setup_time;
+    float solve_time;
+    float update_time;
+    float run_time;
+    float rho_estimate;
 } Info;
 
 
 Info* InitializeInfo(
     int iter,
-    double obj_val,
-    double pri_res,
-    double dua_res,
-    double setup_time,
-    double solve_time,
-    double update_time,
-    double run_time,
-    double rho_estimate
+    float obj_val,
+    float pri_res,
+    float dua_res,
+    float setup_time,
+    float solve_time,
+    float update_time,
+    float run_time,
+    float rho_estimate
 ) {
     Info* info = (Info*)malloc(sizeof(Info));
     info->iter = iter;
@@ -131,14 +131,14 @@ Info* InitializeInfo(
 
 
 typedef struct {
-    double* x;
-    double* z;
+    float* x;
+    float* z;
     Info* info;
 } Results;
 
 Results* InitializeResults(
-    double* x,
-    double* z,
+    float* x,
+    float* z,
     Info* info
 ) {
     Results* results = (Results*) malloc(sizeof(Results));
@@ -151,10 +151,10 @@ Results* InitializeResults(
 
 /// Create variable setting functions
 
-double** get_H(int nx, int nf) {
-    double** H = (double**)malloc(nx * sizeof(double*));
+float** get_H(int nx) {
+    float** H = (float**)malloc(nx * sizeof(float*));
     for (int i=0; i< nx; i++) {
-        H[i] = (double*)malloc(nf * sizeof(double));
+        H[i] = (float*)malloc(nx * sizeof(float));
     }
     
     H[0][0] = 6;
@@ -169,18 +169,18 @@ double** get_H(int nx, int nf) {
     return H;
 }
 
-double* get_g(int nx) {
-    double* g = (double*)malloc(nx * sizeof(double));
+float* get_g(int nx) {
+    float* g = (float*)malloc(nx * sizeof(float));
     g[0] = -8.;
     g[1] = -3.;
     g[2] = -3.;
     return g;
 }
 
-double** get_A(int nc, int nf) {
-    double** A = (double**)malloc(nc * sizeof(double*));
+float** get_A(int nc, int nx) {
+    float** A = (float**)malloc(nc * sizeof(float*));
     for (int i=0; i < nc; i++) {
-        A[i] = (double*)malloc(nf * sizeof(double));
+        A[i] = (float*)malloc(nx * sizeof(float));
     }
     A[0][0] = 1;
     A[0][1] = 0;
@@ -205,8 +205,8 @@ double** get_A(int nc, int nf) {
     return A;
 }
 
-double* get_l(int nc) {
-    double* l = (double*) malloc(nc * sizeof(double));
+float* get_l(int nc) {
+    float* l = (float*) malloc(nc * sizeof(float));
     l[0] = 3;
     l[1] = 0;
     l[2] = -10;
@@ -215,8 +215,8 @@ double* get_l(int nc) {
     return l;
 }
 
-double* get_u(int nc) {
-    double* u = (double*) malloc(nc * sizeof(double));
+float* get_u(int nc) {
+    float* u = (float*) malloc(nc * sizeof(float));
     u[0] = 3;
     u[1] = 0;
     u[2] = INFINITY;
@@ -226,39 +226,39 @@ double* get_u(int nc) {
 }
 
 
-double** create_matrix(int num_row, int num_col) {
-    double** H = (double**)malloc(num_row * sizeof(double*));
+float** create_matrix(int num_row, int num_col) {
+    float** matrix = (float**)malloc(num_row * sizeof(float*));
     for (int i=0; i< num_row; i++) {
-        H[i] = (double*)malloc(num_col * sizeof(double));
+        matrix[i] = (float*)malloc(num_col * sizeof(float));
         for (int j = 0; j < num_col; j++) {
-            H[i][j] = 0;
+            matrix[i][j] = 0;
         }
     }
-    return H;
+    return matrix;
 }
 
-double* create_vector(int dim) {
-    double* vector = (double*)malloc(dim * sizeof(double));
+float* create_vector(int dim) {
+    float* vector = (float*)malloc(dim * sizeof(float));
     for (int i = 0; i < dim; i++) {
         vector[i] = 0;
     }
     return vector;
 }
 
-void vector_subtract(double* source, double* amount, double* dest, int dim) {
+void vector_subtract(float* source, float* amount, float* dest, int dim) {
     for (int i = 0; i < dim; i++) {
         dest[i] = source[i] - amount[i];
     }
 }
 
-void vector_add(double* source, double* amount, double* dest, int dim) {
+void vector_add(float* source, float* amount, float* dest, int dim) {
     for (int i = 0; i < dim; i++) {
         dest[i] = source[i] + amount[i];
     }
 }
 
 
-void vector_where(bool* conditional, double* vector, double when_true, double when_false, int dim) {
+void vector_where(bool* conditional, float* vector, float when_true, float when_false, int dim) {
     for (int i = 0; i < dim; i++) {
         if (conditional[i]) {
             vector[i] = when_true;
@@ -269,28 +269,44 @@ void vector_where(bool* conditional, double* vector, double when_true, double wh
     }
 }
 
-double** create_diagonal_matrix(double* vector, int dim) {
-    double** matrix = create_matrix(dim, dim);
+float** create_diagonal_matrix(float* vector, int dim) {
+    float** matrix = create_matrix(dim, dim);
     for (int i = 0; i < dim; i++) {
-        // matrix[i] = (double*)calloc(dim, sizeof(double));
+        // matrix[i] = (float*)calloc(dim, sizeof(float));
         matrix[i][i] = vector[i];
     }
     return matrix;
 }
 
-double** create_scalar_diagonal_matrix(double w, int dim) {
-    double** matrix = create_matrix(dim, dim);
+
+void populate_diagonal_matrix(float* vector, float** matrix, int dim) {
     for (int i = 0; i < dim; i++) {
-        // matrix[i] = (double*)calloc(dim, sizeof(double));
+        matrix[i][i] = vector[i];
+    }
+}
+
+
+float** create_scalar_diagonal_matrix(float w, int dim) {
+    float** matrix = create_matrix(dim, dim);
+    for (int i = 0; i < dim; i++) {
+        // matrix[i] = (float*)calloc(dim, sizeof(float));
         matrix[i][i] = w;
     }
     return matrix;
 }
 
-double** transpose_matrix(double** matrix, int num_row, int num_col) {
-    double** transpose = create_matrix(num_col, num_row);
+
+void populate_diagonal_matrix_with_scalar(float w, float** matrix, int dim) {
+    for (int i = 0; i < dim; i++) {
+        matrix[i][i] = w;
+    }
+}
+
+
+float** transpose_matrix(float** matrix, int num_row, int num_col) {
+    float** transpose = create_matrix(num_col, num_row);
     for (int i = 0; i < num_col; i++) {
-        // transpose[i] = (double*)malloc(num_row * sizeof(double));
+        // transpose[i] = (float*)malloc(num_row * sizeof(float));
         for (int j = 0; j < num_row; j++) {
             transpose[i][j] = matrix[j][i];
         }
@@ -298,7 +314,7 @@ double** transpose_matrix(double** matrix, int num_row, int num_col) {
     return transpose;
 }
 
-void add_value_to_matrix_inplace(double** matrix, double value, int num_row, int num_col) {
+void add_value_to_matrix_inplace(float** matrix, float value, int num_row, int num_col) {
     for (int i = 0; i < num_row; i++) {
         for (int j = 0; j < num_col; j++) {
             matrix[i][j] = matrix[i][j] + value;
@@ -306,7 +322,7 @@ void add_value_to_matrix_inplace(double** matrix, double value, int num_row, int
     }
 }
 
-void add_value_to_matrix(double** matrix, double** dest, double value, int num_row, int num_col) {
+void add_value_to_matrix(float** matrix, float** dest, float value, int num_row, int num_col) {
     for (int i = 0; i < num_row; i++) {
         for (int j = 0; j < num_col; j++) {
             dest[i][j] = matrix[i][j] + value;
@@ -314,10 +330,19 @@ void add_value_to_matrix(double** matrix, double** dest, double value, int num_r
     }
 }
 
-double** copy_matrix(double** matrix, int num_row, int num_col) {
-    double** copy = create_matrix(num_row, num_col);
+float* copy_vector(float* vector, int dim) {
+    float* copy = (float*)malloc(dim * sizeof(float));
+    for (int i = 0; i < dim; i++) {
+        copy[i] = vector[i];
+    }
+    return copy;
+
+}
+
+float** copy_matrix(float** matrix, int num_row, int num_col) {
+    float** copy = create_matrix(num_row, num_col);
     for (int i = 0; i < num_row; i++) {
-        copy[i] = (double*)calloc(num_col, sizeof(double));
+        copy[i] = (float*)calloc(num_col, sizeof(float));
         for (int j = 0; j < num_col; j++) {
             copy[i][j] = matrix[i][j];
         }
@@ -326,9 +351,17 @@ double** copy_matrix(double** matrix, int num_row, int num_col) {
 }
 
 
+void copy_matrix_inplace(float** matrix, float** copy, int num_row, int num_col) {
+    for (int i = 0; i < num_row; i++) {
+        copy[i] = (float*)calloc(num_col, sizeof(float));
+        for (int j = 0; j < num_col; j++) {
+            copy[i][j] = matrix[i][j];
+        }
+    }
+}
 
 
-void matmul(double** matrix1, double** matrix2, double** result, int left, int nelem, int right)
+void matmul(float** matrix1, float** matrix2, float** result, int left, int nelem, int right)
 {
     for (int i = 0; i < left; i++) {
         for (int j = 0; j < right; j++) {
@@ -340,7 +373,7 @@ void matmul(double** matrix1, double** matrix2, double** result, int left, int n
     }
 }
 
-void matvecmul(double** matrix, double* vector, double* result, int left, int nelem) {
+void matvecmul(float** matrix, float* vector, float* result, int left, int nelem) {
     for (int i = 0; i < left; i++) {
         result[i] = 0;
         for (int j = 0; j < nelem; j++) {
@@ -349,8 +382,8 @@ void matvecmul(double** matrix, double* vector, double* result, int left, int ne
     }
 }
 
-double vector_dot(double* vec1, double* vec2, int dim) {
-    double dot = 0;
+float vector_dot(float* vec1, float* vec2, int dim) {
+    float dot = 0;
     for (int i = 0; i < dim; i++) {
         dot += (vec1[i] * vec2[i]);
     }
@@ -358,7 +391,7 @@ double vector_dot(double* vec1, double* vec2, int dim) {
 }
 
 
-void add_matrices(double** A, double** B, double** result, int num_row, int num_col) {
+void add_matrices(float** A, float** B, float** result, int num_row, int num_col) {
     for (int i = 0; i < num_row; i++) {
         for (int k = 0; k < num_col; k++) {
             result[i][k] = A[i][k] + B[i][k];
@@ -366,7 +399,7 @@ void add_matrices(double** A, double** B, double** result, int num_row, int num_
     }
 }
 
-void subtract_matrices(double** A, double** B, double** result, int num_row, int num_col) {
+void subtract_matrices(float** A, float** B, float** result, int num_row, int num_col) {
     for (int i = 0; i < num_row; i++) {
         for (int k = 0; k < num_col; k++) {
             result[i][k] = A[i][k] - B[i][k];
@@ -374,7 +407,7 @@ void subtract_matrices(double** A, double** B, double** result, int num_row, int
     }
 }
 
-void scalar_multiply_matrix(double** matrix, double scalar, double** dest, int num_row, int num_col) {
+void scalar_multiply_matrix(float** matrix, float scalar, float** dest, int num_row, int num_col) {
     for (int i = 0; i < num_row; i++) {
         for (int j = 0; j < num_col; j++) {
             dest[i][j] = matrix[i][j] * scalar;
@@ -382,7 +415,7 @@ void scalar_multiply_matrix(double** matrix, double scalar, double** dest, int n
     }
 }
 
-void flatten_matrix(double** matrix, double* dest, int num_row, int num_col) {
+void flatten_matrix(float** matrix, float* dest, int num_row, int num_col) {
     for (int i = 0; i < num_row; i++) {
         for (int j = 0; j < num_col; j++) {
             dest[i*num_col + j] = matrix[i][j];
@@ -390,7 +423,7 @@ void flatten_matrix(double** matrix, double* dest, int num_row, int num_col) {
     }
 }
 
-void divide_matrices(double** A, double** B, double** result, int num_row, int num_col) {
+void divide_matrices(float** A, float** B, float** result, int num_row, int num_col) {
     for (int i = 0; i < num_row; i++) {
         for (int j = 0; j < num_col; j++) {
             result[i][j] = A[i][j] / B[i][j];
@@ -398,7 +431,7 @@ void divide_matrices(double** A, double** B, double** result, int num_row, int n
     }
 }
 
-void divide_diag(double** A, double** B, double** result, int num_row) {
+void divide_diag(float** A, float** B, float** result, int num_row) {
     for (int i = 0; i < num_row; i++) {
         result[i][i] = A[i][i] / B[i][i];
     }
@@ -413,10 +446,10 @@ void divide_diag(double** A, double** B, double** result, int num_row) {
  *        containing column indexes where the permutation matrix has "1". The last element P[N]=S+N, 
  *        where S is the number of row exchanges needed for determinant computation, det(P)=(-1)^S    
  */
-int LUPDecompose(double **A, int N, double Tol, int *P) {
+int LUPDecompose(float **A, int N, float Tol, int *P) {
 
     int i, j, k, imax; 
-    double maxA, *ptr, absA;
+    float maxA, *ptr, absA;
 
     for (i = 0; i <= N; i++)
         P[i] = i; //Unit permutation matrix, P[N] initialized with N
@@ -462,7 +495,7 @@ int LUPDecompose(double **A, int N, double Tol, int *P) {
 /* INPUT: A,P filled in LUPDecompose; b - rhs vector; N - dimension
  * OUTPUT: x - solution vector of A*x=b
  */
-void LUPSolve(double **A, int *P, double *b, int N, double *x) {
+void LUPSolve(float **A, int *P, float *b, int N, float *x) {
 
     for (int i = 0; i < N; i++) {
         x[i] = b[P[i]];
@@ -482,7 +515,7 @@ void LUPSolve(double **A, int *P, double *b, int N, double *x) {
 /* INPUT: A,P filled in LUPDecompose; N - dimension
  * OUTPUT: IA is the inverse of the initial matrix
  */
-void LUPInvert(double **A, int *P, int N, double **IA) {
+void LUPInvert(float **A, int *P, int N, float **IA) {
   
     for (int j = 0; j < N; j++) {
         for (int i = 0; i < N; i++) {
@@ -504,9 +537,9 @@ void LUPInvert(double **A, int *P, int N, double **IA) {
 /* INPUT: A,P filled in LUPDecompose; N - dimension. 
  * OUTPUT: Function returns the determinant of the initial matrix
  */
-double LUPDeterminant(double **A, int *P, int N) {
+float LUPDeterminant(float **A, int *P, int N) {
 
-    double det = A[0][0];
+    float det = A[0][0];
 
     for (int i = 1; i < N; i++)
         det *= A[i][i];
@@ -514,11 +547,11 @@ double LUPDeterminant(double **A, int *P, int N) {
     return (P[N] - N) % 2 == 0 ? det : -det;
 }
 
-void compute_matrix_inverse(double** A, double** IA, int N) {
-    int *P = (int*)malloc((N+1) * sizeof(int));
+void compute_matrix_inverse(float** A, float** IA, int N) {
+    int *P = (int*)malloc(N * sizeof(int));
     LUPDecompose(A, N, 0.0001, P);
     LUPInvert(A, P, N, IA);
-    free(P);
+    // free(P);
 }
 
 // //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -542,14 +575,15 @@ void free_Results(Results* results) {
 }
 
 
-void free_tensor(double** tensor, int num_rows) {
+void free_tensor(float** tensor, int num_rows) {
     for (int i = 0; i < num_rows; i++) {
         free(tensor[i]);
     }
 }
 
-
-void merge(double* arr, double* temp, int left, int mid, int right) 
+// //////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Copied from: https://github.com/rbga/CUDA-Merge-and-Bitonic-Sort/blob/master/BitonicMerge/kernel.cu
+void merge(float* arr, float* temp, int left, int mid, int right) 
 {
     int i = left;
     int j = mid + 1;
@@ -574,7 +608,7 @@ void merge(double* arr, double* temp, int left, int mid, int right)
 }
 
 //CPU Implementation of Merge Sort
-void mergeSortCPU(double* arr, double* temp, int left, int right) 
+void mergeSortCPU(float* arr, float* temp, int left, int right) 
 {
     if (left >= right)
         return;
@@ -587,14 +621,17 @@ void mergeSortCPU(double* arr, double* temp, int left, int right)
     merge(arr, temp, left, mid, right);
 }
 
-void print_matrix(int r, int c, double** matrix)
+
+// //////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void print_matrix(int r, int c, float** matrix)
 {
     printf("[\n");
     for (int i = 0; i < r; i++)
     {
         printf("[");
         for (int j = 0; j < c; j++) {
-            printf("%lf, ", matrix[i][j]);
+            printf("%f, ", matrix[i][j]);
         }
         printf("],");
         printf("\n");
@@ -602,8 +639,16 @@ void print_matrix(int r, int c, double** matrix)
     printf("]\n");
 }
 
+void print_vector(int dim, float* vector)
+{
+    printf("[");
+    for (int i = 0; i < dim; i++) {
+        printf("%f, ", vector[i]);
+    }
+    printf("]\n");
+}
 
-int argmin(double* array, int n) {
+int argmin(float* array, int n) {
     if (array == NULL || n <= 0) return -1; // Error handling for invalid input
 
     int minIndex = 0;
@@ -620,8 +665,8 @@ int argmin(double* array, int n) {
 }
 
 
-double* vector_abs(double* arr, int dim) {
-    double* abs_arr = (double*)malloc(dim * sizeof(double));
+float* vector_abs(float* arr, int dim) {
+    float* abs_arr = (float*)malloc(dim * sizeof(float));
     for (int i = 0; i < dim; i++) {
         abs_arr[i] = fabs(arr[i]);
     }
@@ -630,8 +675,8 @@ double* vector_abs(double* arr, int dim) {
 }
 
 
-double* vector_subtract_scalar(double* vector, double scalar, int dim) {
-    double* dest = (double*)malloc(dim * sizeof(double));
+float* vector_subtract_scalar(float* vector, float scalar, int dim) {
+    float* dest = (float*)malloc(dim * sizeof(float));
     for (int i = 0; i < dim; i++) {
         dest[i] = vector[i] - scalar;
     }
@@ -639,27 +684,27 @@ double* vector_subtract_scalar(double* vector, double scalar, int dim) {
 }
 
 
-void MatrixInverse3x3(double** m, double** minv) {
-    // computes the inverse of a matrix m
-    double det = m[0][0] * (m[1][1] * m[2][2] - m[2][1] * m[1][2]) -
-                m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
-                m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+// void MatrixInverse3x3(float** m, float** minv) {
+//     // computes the inverse of a matrix m
+//     float det = m[0][0] * (m[1][1] * m[2][2] - m[2][1] * m[1][2]) -
+//                 m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
+//                 m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
 
-    double invdet = 1 / det;
-    minv[0][0] = (m[1][1] * m[2][2] - m[2][1] * m[1][2]) * invdet;
-    minv[0][1] = (m[0][2] * m[2][1] - m[0][1] * m[2][2]) * invdet;
-    minv[0][2] = (m[0][1] * m[1][2] - m[0][2] * m[1][1]) * invdet;
-    minv[1][0] = (m[1][2] * m[2][0] - m[1][0] * m[2][2]) * invdet;
-    minv[1][1] = (m[0][0] * m[2][2] - m[0][2] * m[2][0]) * invdet;
-    minv[1][2] = (m[1][0] * m[0][2] - m[0][0] * m[1][2]) * invdet;
-    minv[2][0] = (m[1][0] * m[2][1] - m[2][0] * m[1][1]) * invdet;
-    minv[2][1] = (m[2][0] * m[0][1] - m[0][0] * m[2][1]) * invdet;
-    minv[2][2] = (m[0][0] * m[1][1] - m[1][0] * m[0][1]) * invdet;
-}
+//     float invdet = 1 / det;
+//     minv[0][0] = (m[1][1] * m[2][2] - m[2][1] * m[1][2]) * invdet;
+//     minv[0][1] = (m[0][2] * m[2][1] - m[0][1] * m[2][2]) * invdet;
+//     minv[0][2] = (m[0][1] * m[1][2] - m[0][2] * m[1][1]) * invdet;
+//     minv[1][0] = (m[1][2] * m[2][0] - m[1][0] * m[2][2]) * invdet;
+//     minv[1][1] = (m[0][0] * m[2][2] - m[0][2] * m[2][0]) * invdet;
+//     minv[1][2] = (m[1][0] * m[0][2] - m[0][0] * m[1][2]) * invdet;
+//     minv[2][0] = (m[1][0] * m[2][1] - m[2][0] * m[1][1]) * invdet;
+//     minv[2][1] = (m[2][0] * m[0][1] - m[0][0] * m[2][1]) * invdet;
+//     minv[2][2] = (m[0][0] * m[1][1] - m[1][0] * m[0][1]) * invdet;
+// }
 
 // Function to concatenate two matrices in C
-double** concatenate_matrices(double** mat1, int rows1, int cols1, double** mat2, int rows2, int cols2, int dim, int out_rows, int out_cols) {
-    double** result;
+float** concatenate_matrices(float** mat1, int rows1, int cols1, float** mat2, int rows2, int cols2, int dim, int out_rows, int out_cols) {
+    float** result;
 
     if (dim == 1) { // Horizontal concatenation
         if (rows1 != rows2) {
@@ -667,9 +712,9 @@ double** concatenate_matrices(double** mat1, int rows1, int cols1, double** mat2
         }
         out_rows = rows1;
         out_cols = cols1 + cols2;
-        result = (double**)malloc(out_rows * sizeof(double*));
+        result = (float**)malloc(out_rows * sizeof(float*));
         for (int i = 0; i < out_rows; i++) {
-            result[i] = (double*)malloc(out_cols * sizeof(double));
+            result[i] = (float*)malloc(out_cols * sizeof(float));
             for (int j = 0; j < cols1; j++) {
                 result[i][j] = mat1[i][j];
             }
@@ -683,15 +728,15 @@ double** concatenate_matrices(double** mat1, int rows1, int cols1, double** mat2
         }
         out_rows = rows1 + rows2;
         out_cols = cols1;
-        result = (double**)malloc(out_rows * sizeof(double*));
+        result = (float**)malloc(out_rows * sizeof(float*));
         for (int i = 0; i < rows1; i++) {
-            result[i] = (double*)malloc(out_cols * sizeof(double));
+            result[i] = (float*)malloc(out_cols * sizeof(float));
             for (int j = 0; j < out_cols; j++) {
                 result[i][j] = mat1[i][j];
             }
         }
         for (int i = 0; i < rows2; i++) {
-            result[i + rows1] = (double*)malloc(out_cols * sizeof(double));
+            result[i + rows1] = (float*)malloc(out_cols * sizeof(float));
             for (int j = 0; j < out_cols; j++) {
                 result[i + rows1][j] = mat2[i][j];
             }
@@ -703,17 +748,55 @@ double** concatenate_matrices(double** mat1, int rows1, int cols1, double** mat2
     return result;
 }
 
+void concatenate_matrices_inplace(
+float** mat1, int rows1, int cols1, float** mat2, int rows2, int cols2, int dim, float** result, int out_rows, int out_cols
+) {
+    if (dim == 1) { // Horizontal concatenation
+        // if (rows1 != rows2) {
+        //     return 0; // Incompatible dimensions
+        // }
+        out_rows = rows1;
+        out_cols = cols1 + cols2;
+        for (int i = 0; i < out_rows; i++) {
+            for (int j = 0; j < cols1; j++) {
+                result[i][j] = mat1[i][j];
+            }
+            for (int j = 0; j < cols2; j++) {
+                result[i][j + cols1] = mat2[i][j];
+            }
+        }
+    } else if (dim == 0) { // Vertical concatenation
+        // if (cols1 != cols2) {
+        //     return 0; // Incompatible dimensions
+        // }
+        out_rows = rows1 + rows2;
+        out_cols = cols1;
+        for (int i = 0; i < rows1; i++) {
+            for (int j = 0; j < out_cols; j++) {
+                result[i][j] = mat1[i][j];
+            }
+        }
+        for (int i = 0; i < rows2; i++) {
+            for (int j = 0; j < out_cols; j++) {
+                result[i + rows1][j] = mat2[i][j];
+            }
+        }
+    } //else {
+    //     return 0; // Invalid dimension
+    // }
+}
+
 
 
 typedef struct
 {
     QP* qp;
     Settings* settings;
-    double* rhos;
+    float* rhos;
     int rhos_len;
-    double*** W_ks;
-    double*** B_ks;
-    double** b_ks;
+    float*** W_ks;
+    float*** B_ks;
+    float** b_ks;
     int clamp_left;
     int clamp_right;
 } ReLU_Layer;
@@ -731,217 +814,264 @@ ReLU_Layer* Initialize_ReLU_Layer (
     relu_layer->settings = settings;
 
     // setup rhos
-    double* rhos = (double*)malloc(1 * sizeof(double));
+    // compute the number of rhos needed
+    int increasing_amount = (int)((1. + (log(settings->rho) - log(settings->rho_min)) / log(settings->adaptive_rho_tolerance)));
+    int decreasing_amount = (int)((log(settings->rho_max) - log(settings->rho)) / log(settings->adaptive_rho_tolerance));
+    int total_amount = increasing_amount + decreasing_amount;
+    printf("The total amount is: %d\n", total_amount);
+    float* rhos = (float*)malloc(total_amount * sizeof(float));
     rhos[0] = settings->rho;
     relu_layer->rhos = rhos;
     relu_layer->rhos_len = 1;
     if (settings->adaptive_rho) {
-        double rho = settings->rho / settings->adaptive_rho_tolerance;
-        // double* rhos;
+        float rho = settings->rho / settings->adaptive_rho_tolerance;
+        // float* rhos;
         int i = 1;
+        // printf("Increasing rho:\n");
         while (rho >= settings->rho_min) {
-            rhos = (double*)realloc(rhos, (i+1) * sizeof(double));
+            // rhos = (float*)realloc(rhos, (i+1) * sizeof(float));
             rhos[i] = rho;
+            // printf("i: %d, rho: %f\n", i, rho);
             rho = rho / settings->adaptive_rho_tolerance;
             i++;
         }
         rho = settings->rho*settings->adaptive_rho_tolerance;
+        // printf("Decreasing rho: \n");
         while (rho <= settings->rho_max) {
-            rhos = (double*)realloc(rhos, (i+1) * sizeof(double));
+            // rhos = (float*)realloc(rhos, (i+1) * sizeof(float));
             rhos[i] = rho;
+            // printf("i: %d, rho: %f\n", i, rho);
             rho = rho * settings->adaptive_rho_tolerance;
             i++;
         }
+        // printf("Finished rho\n");
         relu_layer->rhos = rhos;
         relu_layer->rhos_len = i;
         // Sort
-        double* temp = (double*)malloc(relu_layer->rhos_len * sizeof(double));
+        float* temp = (float*)malloc(relu_layer->rhos_len * sizeof(float));
         mergeSortCPU(relu_layer->rhos, temp, 0, relu_layer->rhos_len - 1);
     }
     
     // setup matrices
-    double** H = qp->H; 
-    double** A = qp->A;
-    double* g = qp->g;
-    double* l = qp->l;
-    double* u = qp->u;
+    float** H = qp->H; 
+    float** A = qp->A;
+    float* g = qp->g;
+    float* l = qp->l;
+    float* u = qp->u;
     // int nx = qp->nx;
     int nc = qp->nc;
-    int nf = qp->nf; 
-    double sigma = settings->sigma;
+    // int nf = qp->nf; 
+    int nf = qp->nx;
+    float sigma = settings->sigma;
 
-    double*** kkts_rhs_invs = (double***)malloc(relu_layer->rhos_len * sizeof(double**));
+    float*** kkts_rhs_invs = (float***)malloc(relu_layer->rhos_len * sizeof(float**));
     for (int i = 0; i < relu_layer->rhos_len; i++) {
-        // kkts_rhs_invs[i] = (double**)malloc(nf * sizeof(double*));
+        // kkts_rhs_invs[i] = (float**)malloc(nf * sizeof(float*));
         // for (int j = 0; j < nf; j++) {
-        //     kkts_rhs_invs[i][j] = (double*)malloc(nf * sizeof(double));
+        //     kkts_rhs_invs[i][j] = (float*)malloc(nf * sizeof(float));
         //     for ()
         // }
         kkts_rhs_invs[i] = create_matrix(nf, nf);
     }
-    // double kkts_rhs_invs[relu_layer->rhos_len][nf][nf];
-    double* flag_checks = (double*)calloc(nc, sizeof(double));
+    // float kkts_rhs_invs[relu_layer->rhos_len][nf][nf];
+    float* flag_checks = (float*)calloc(nc, sizeof(float));
     vector_subtract(u, l, flag_checks, nc);
     bool* conditional = (bool*)calloc(nc, sizeof(bool));
     for (int i = 0; i < nc; i++) {
         conditional[i] = flag_checks[i] <= settings->eq_tol;
     }
     free(flag_checks);
+    // printf("Based removed flag_checks\n");
     
-
     for (int i = 0; i < relu_layer->rhos_len; i++) {
-        double rho_scalar = relu_layer->rhos[i];
-        double* rho = (double*)calloc(nc, sizeof(double));
+        float rho_scalar = relu_layer->rhos[i];
+        float* rho = (float*)calloc(nc, sizeof(float));
         for (int j = 0; j < nc; j++) {
             rho[j] = rho_scalar;
         }
         vector_where(conditional, rho, rho_scalar * 1e3, rho_scalar, nc);
-        double** rho_mat = create_diagonal_matrix(rho, nc);
-        double* sigma_vector = (double*)calloc(nf, sizeof(double));
+        float** rho_mat = create_diagonal_matrix(rho, nc);
+        float* sigma_vector = (float*)calloc(nf, sizeof(float));
         for (int j = 0; j < nf; j++) {
             sigma_vector[j] = sigma;
         }
-        double** sigma_mat = create_diagonal_matrix(sigma_vector, nf);
-        
-        free(sigma_vector);
-        free(rho);
+        float** sigma_mat = create_diagonal_matrix(sigma_vector, nf);
 
-        double** A_transpose = transpose_matrix(A, nc, nf);
-        double** rho_A = create_matrix(nc, nf);
+        float** A_transpose = transpose_matrix(A, nc, nf);
+        float** rho_A = create_matrix(nc, nf);
         matmul(rho_mat, A, rho_A, nc, nc, nf);
-        double** AT_rho_A = create_matrix(nf, nf);
+        float** AT_rho_A = create_matrix(nf, nf);
         matmul(A_transpose, rho_A, AT_rho_A, nf, nc, nf);
 
-        double** summed_mat = create_matrix(nf, nf);
+        float** summed_mat = create_matrix(nf, nf);
         add_matrices(H, sigma_mat, summed_mat, nf, nf);
         add_matrices(summed_mat, AT_rho_A, summed_mat, nf, nf);
         // need to take inverse now.... of summed mats
-        double** summed_mat_inv = create_matrix(nf, nf);
+        float** summed_mat_inv = create_matrix(nf, nf);
+        // printf("I'm about to get fucked taking the inverse:\n");
         compute_matrix_inverse(summed_mat, summed_mat_inv, nf);
+        // printf("Ah I'm all fucked up\n");
 
         // MatrixInverse3x3(summed_mat, summed_mat_inv);
         for (int a = 0; a < nf; a++) {
             for (int b = 0; b < nf; b++) {
                 kkts_rhs_invs[i][a][b] = summed_mat_inv[a][b];
-                // printf("a: %d, b: %d, val: %lf\n", a, b, summed_mat_inv[a][b]);
+                // printf("a: %d, b: %d, val: %f\n", a, b, summed_mat_inv[a][b]);
             }
         }
         // printf("################################\n");
         // kkts_rhs_invs[i] = summed_mat_inv;
         // // free variables
+        // printf("About to free some bitches on iteration: %d\n", i);
+        free(sigma_vector);
+        free(rho);
         free_tensor(rho_A, nc);
         free_tensor(A_transpose, nf);
         free_tensor(summed_mat, nf);
         free_tensor(sigma_mat, nf);
+        // printf("Freed them MFs\n");
     }
 
     // Define W_ks, B_ks, b_ks
     int W_Row = nf + 2 * nc;
-    double*** W_ks = (double***)malloc(relu_layer->rhos_len * sizeof(double**));
-    double*** B_ks = (double***)malloc(relu_layer->rhos_len * sizeof(double**));
-    double** b_ks = (double**)malloc(relu_layer->rhos_len * sizeof(double*));
+    float*** W_ks = (float***)malloc(relu_layer->rhos_len * sizeof(float**));
+    float*** B_ks = (float***)malloc(relu_layer->rhos_len * sizeof(float**));
+    float** b_ks = (float**)malloc(relu_layer->rhos_len * sizeof(float*));
     for (int i = 0; i < relu_layer->rhos_len; i++) {
-        // W_ks[i] = (double**)malloc(W_Row * sizeof(double*));
-        // B_ks[i] = (double**)malloc(W_Row * sizeof(double*));
-        // b_ks[i] = (double*)malloc(W_Row * sizeof(double));
+        // W_ks[i] = (float**)malloc(W_Row * sizeof(float*));
+        // B_ks[i] = (float**)malloc(W_Row * sizeof(float*));
+        // b_ks[i] = (float*)malloc(W_Row * sizeof(float));
         // for (int j = 0; j < nf + 2 * nc; j++) {
-        //     W_ks[i][j] = (double*)malloc(W_Row * sizeof(double));
+        //     W_ks[i][j] = (float*)malloc(W_Row * sizeof(float));
         // }
         // for (int j = 0; j < nf; j++) {
-        //     B_ks[i][j] = (double*)malloc(nf * sizeof(double));
+        //     B_ks[i][j] = (float*)malloc(nf * sizeof(float));
         // }
-        W_ks[i] = create_matrix(W_Row, nc);
+        printf("YAR ME MATIES CREATING W_ks\n");
+        W_ks[i] = create_matrix(W_Row, W_Row);
+        printf("Lit we're about to rock your world with B_ks\n");
         B_ks[i] = create_matrix(W_Row, nf);
+        printf("Boom bam gottem with these b_ks\n");
         b_ks[i] = create_vector(W_Row);
+        printf("I'm creating matrices at i: %d\n", i);
     }
+    printf("I'm here\n");
+    // Define variables
+    float* rho = create_vector(nc);
+    float** rho_A = create_matrix(nc, nf);
+    float** AT_rho_A = create_matrix(nf, nf);
+    float** summed_mat = create_matrix(nf, nf);
+    float** AT_rho = create_matrix(nf, nc);
+    float** K_AT_rho = create_matrix(nf, nc);
+    float** neg_K = create_matrix(nf, nf);
+    float** A_elem00 = create_matrix(nc, nf);
+    float** A_K_AT_rho = create_matrix(nc, nc);
+    float** K_AT = create_matrix(nf, nc);
+    float** A_K_AT = create_matrix(nc, nc);
+    float** neg_AK = create_matrix(nc, nf);
+    float** neg_A = create_matrix(nc, nf);
+    float** zeros = create_matrix(nc, nf);
+    float** A_transpose = transpose_matrix(A, nc, nf);
+    float* ones_vector = (float*)calloc(nc, sizeof(float));
+    for (int j = 0; j < nc; j++) {
+        ones_vector[j] = 1;
+    }
+    float** Ic = create_diagonal_matrix(ones_vector, nc);
+    float** rho_mat = create_matrix(nc, nc);
+    float* sigma_vector = create_vector(nf);
+    for (int j = 0; j < nf; j++) {
+        sigma_vector[j] = sigma;
+    }
+    float** Ix = create_diagonal_matrix(sigma_vector, nf);
+    float** neg_I = create_scalar_diagonal_matrix(-1, nf);
+    float** rho_inv = create_matrix(nc, nc);
+    // Define elements involved with concatenation
+    float** elem_00 = create_matrix(nf, nf);
+    float** elem_01 = create_matrix(nf, nc);
+    float** elem_02 = create_matrix(nf, nc);
+    float** elem_10 = create_matrix(nc, nf);
+    float** elem_11 = create_matrix(nc, nc);
+    float** elem_12 = create_matrix(nc, nc);
+    float** elem_20 = create_matrix(nc, nf);
+    float** elem_21 = create_matrix(nc, nc);
+    float** elem_22 = create_matrix(nc, nc);
+
+    // float** elem_00_01 = create_matrix(nf, nf+nc);
+
+    float* b_k = create_vector(nf + 2*nc);
 
     for (int rho_ind = 0; rho_ind < relu_layer->rhos_len; rho_ind++) {
         // printf("##################################################\n");
-        // printf("rho_ind is: %d\n", rho_ind);
-        double rho_scalar = relu_layer->rhos[rho_ind];
-        double* rho = create_vector(nc);
+        printf("rho_ind is: %d\n", rho_ind);
+        float rho_scalar = relu_layer->rhos[rho_ind];
         for (int j = 0; j < nc; j++) {
             rho[j] = rho_scalar;
         }
+        printf("created rho vector\n");
         vector_where(conditional, rho, rho_scalar * 1e3, rho_scalar, nc);
-        double** rho_mat = create_diagonal_matrix(rho, nc);
-        double* sigma_vector = create_vector(nf);
-        for (int j = 0; j < nf; j++) {
-            sigma_vector[j] = sigma;
-        }
-        double** Ix = create_diagonal_matrix(sigma_vector, nf);
-        free(sigma_vector);
-        double* ones_vector = (double*)calloc(nc, sizeof(double));
-        for (int j = 0; j < nc; j++) {
-            ones_vector[j] = 1;
-        }
-        double** Ic = create_diagonal_matrix(ones_vector, nc);
-        double** K = kkts_rhs_invs[rho_ind];
+        // float** rho_mat = create_diagonal_matrix(rho, nc);
+        populate_diagonal_matrix(rho, rho_mat, nc);
+        // free(sigma_vector);
+        // float** K = kkts_rhs_invs[rho_ind];
+        printf("created Ic, K\n");
         // CREATING W_ks elements!!!!
         // Create (0, 0) element
         // K @ (sigma * Ix - A.T @ (rho @ A))
-        double** A_transpose = transpose_matrix(A, nc, nf);
-        double** rho_A = create_matrix(nc, nf);
         matmul(rho_mat, A, rho_A, nc, nc, nf);
-        double** AT_rho_A = create_matrix(nf, nf);
         matmul(A_transpose, rho_A, AT_rho_A, nf, nc, nf);
-        double** summed_mat = create_matrix(nf, nf);
         subtract_matrices(Ix, AT_rho_A, summed_mat, nf, nf);
-        double** elem_00 = create_matrix(nf, nf);
-        matmul(K, summed_mat, elem_00, nf, nf, nf);
+        matmul(kkts_rhs_invs[rho_ind], summed_mat, elem_00, nf, nf, nf);
+        printf("Created elem 00\n");
         // Create (0, 1) element
         // 2 * K @ A.T @ rho
-        double** AT_rho = create_matrix(nf, nc);
         matmul(A_transpose, rho_mat, AT_rho, nf, nc, nc); // [nf,nc]
-        double** K_AT_rho = create_matrix(nf, nc);
         matmul(kkts_rhs_invs[rho_ind], AT_rho, K_AT_rho, nf, nf, nc); // [nf, nc]
         scalar_multiply_matrix(K_AT_rho, 2, K_AT_rho, nf, nc);
-        double** elem_01 = copy_matrix(K_AT_rho, nf, nc);
+        // float** elem_01 = copy_matrix(K_AT_rho, nf, nc);
+        copy_matrix_inplace(K_AT_rho, elem_01, nf, nc);
+        printf("Created elem 01\n");
         // Create (0, 2) element
         // -K @ A.T
-        double** neg_I = create_scalar_diagonal_matrix(-1, nf);
-        double** neg_K = create_matrix(nf, nf);
         matmul(neg_I, kkts_rhs_invs[rho_ind], neg_K, nf, nf, nf);
-        double** elem_02 = create_matrix(nf, nc);
         matmul(neg_K, A_transpose, elem_02, nf, nf, nc);
+        printf("Created elem 02\n");
         // Create (1, 0) element
         // A @ K @ (sigma * Ix - A.T @ (rho @ A)) + A
         // A @ elem_00 + A
-        double** A_elem00 = create_matrix(nc, nf);
         matmul(A, elem_00, A_elem00, nc, nf, nf);
-        double** elem_10 = create_matrix(nc, nf);
         add_matrices(A_elem00, A, elem_10, nc, nf);
+        printf("Created elem 10\n");
         // Create (1, 1) element
         // 2 * A @ K @ A.T @ rho - Ic
         // 2 * partial_elem01 - Ic
-        double** A_K_AT_rho = create_matrix(nc, nc);
         scalar_multiply_matrix(K_AT_rho, .5, K_AT_rho, nf, nc);
         matmul(A, K_AT_rho, A_K_AT_rho, nc, nf, nc);
         scalar_multiply_matrix(A_K_AT_rho, 2, A_K_AT_rho, nc, nc);
-        double** elem_11 = create_matrix(nc, nc);
         subtract_matrices(A_K_AT_rho, Ic, elem_11, nc, nc);
+        printf("Created elem 11\n");
         // Create (1, 2) element
         // -A @ K @ A.T + rho_inv
-        double** K_AT = create_matrix(nf, nc);
         matmul(kkts_rhs_invs[rho_ind], A_transpose, K_AT, nf, nf, nc);
-        double** A_K_AT = create_matrix(nc, nc);
         matmul(A, K_AT, A_K_AT, nc, nf, nc);
         scalar_multiply_matrix(A_K_AT, -1, A_K_AT, nc, nc);
-        double** rho_inv = create_scalar_diagonal_matrix(1.0, nc);
-        divide_diag(rho_inv, rho_mat, rho_inv, nc);
-        double** elem_12 = create_matrix(nc, nc);
+        // float** rho_inv = create_scalar_diagonal_matrix(1.0, nc);
+        // divide_diag(rho_inv, rho_mat, rho_inv, nc);
+        divide_diag(Ic, rho_mat, rho_inv, nc);
         add_matrices(A_K_AT, rho_inv, elem_12, nc, nc);
+        printf("Created elem 12\n");
         // Create (2, 0) element
         // rho @ A
-        double** elem_20 = create_matrix(nc, nf);
         matmul(rho_mat, A, elem_20, nc, nc, nf);
+        printf("Created elem 20\n");
         // Create (2, 1) element                                                    [nc, nf]
         // -rho
-        double** elem_21 = create_matrix(nc, nc);
         scalar_multiply_matrix(rho_mat, -1., elem_21, nc, nc);
+        printf("Created elem 21\n");
         // Create (2, 2) element                                                    [nc, nc]
         // Ic
-        double** elem_22 = copy_matrix(Ic, nc, nc); //                              [nc, nc]
+        // float** elem_22 = copy_matrix(Ic, nc, nc); //                              [nc, nc]
+        copy_matrix_inplace(Ic, elem_22, nc, nc);
+        printf("Created elem 22\n");
         // W_ks is of size:
         // [nf, nf + nc + nc]
         // [nc, nf + nc + nc]
@@ -950,61 +1080,107 @@ ReLU_Layer* Initialize_ReLU_Layer (
         // [elem_00, elem_01, elem_02]
         // [elem_10, elem_11, elem_12]
         // [elem_20, elem_21, elem_22]
-        double** elem_00_01 = concatenate_matrices(elem_00, nf, nf, elem_01, nf, nc, 1, nf, nf+nc);
-        double** row_0 = concatenate_matrices(elem_00_01, nf, nf+nc, elem_02, nf, nc, 1, nf, nf+2*nc);
-        double** elem_10_11 = concatenate_matrices(elem_10, nc, nf, elem_11, nc, nc, 1, nc, nf+nc);
-        double** row_1 = concatenate_matrices(elem_10_11, nc, nf+nc, elem_12, nc, nc, 1, nc, nf+2*nc);
-        double** elem_20_21 = concatenate_matrices(elem_20, nc, nf, elem_21, nc, nc, 1, nc, nf+nc);
-        double** row_2 = concatenate_matrices(elem_20_21, nc, nf+nc, elem_22, nc, nc, 1, nc, nf+2*nc);
-        double** rows_01 = concatenate_matrices(row_0, nf, nf+2*nc, row_1, nc, nf+2*nc, 0, nf+nc, nf+2*nc);
-        double** rows_012 = concatenate_matrices(rows_01, nf+nc, nf+2*nc, row_2, nc, nf+2*nc, 0, nf+2*nc, nf+2*nc);
-        W_ks[rho_ind] = rows_012;
+        float** elem_00_01 = concatenate_matrices(elem_00, nf, nf, elem_01, nf, nc, 1, nf, nf+nc);
+        // concatenate_matrices_inplace(elem_00_01, nf, nf+nc, elem_02, nf, nc, 1, elem_00_01, nf, nf+2*nc);
+        float** row_0 = concatenate_matrices(elem_00_01, nf, nf+nc, elem_02, nf, nc, 1, nf, nf+2*nc);
+        float** elem_10_11 = concatenate_matrices(elem_10, nc, nf, elem_11, nc, nc, 1, nc, nf+nc);
+        float** row_1 = concatenate_matrices(elem_10_11, nc, nf+nc, elem_12, nc, nc, 1, nc, nf+2*nc);
+        float** elem_20_21 = concatenate_matrices(elem_20, nc, nf, elem_21, nc, nc, 1, nc, nf+nc);
+        float** row_2 = concatenate_matrices(elem_20_21, nc, nf+nc, elem_22, nc, nc, 1, nc, nf+2*nc);
+        float** rows_01 = concatenate_matrices(row_0, nf, nf+2*nc, row_1, nc, nf+2*nc, 0, nf+nc, nf+2*nc);
+        float** rows_012 = concatenate_matrices(rows_01, nf+nc, nf+2*nc, row_2, nc, nf+2*nc, 0, nf+2*nc, nf+2*nc);
+        printf("Creating W_ks[whatever]\n");
+        W_ks[rho_ind] = copy_matrix(rows_012, nf+2*nc, nf+2*nc);
+        printf("Created W_ks[whatever]\n");
         // FREE TENSORS
         // free_tensor(rho_A, nc);
         // free_tensor(A_transpose, nf);
         // Creating the B_ks
-        double** neg_AK = create_matrix(nc, nf);
-        double** neg_A = create_matrix(nc, nf);
         scalar_multiply_matrix(A, -1, neg_A, nc, nf);
-        matmul(neg_A, K, neg_AK, nc, nf, nf);
-        double** zeros = create_matrix(nc, nf);
-        double** elems_01 = concatenate_matrices(neg_K, nf, nf, neg_AK, nc, nf, 0, nf+nc, nf);
-        double** elems_012 = concatenate_matrices(elems_01, nf+nc, nf, zeros, nc, nf, 0, nf+2*nc, nf);
-        B_ks[rho_ind] = elems_012;
+        matmul(neg_A, kkts_rhs_invs[rho_ind], neg_AK, nc, nf, nf);
+        float** elems_01 = concatenate_matrices(neg_K, nf, nf, neg_AK, nc, nf, 0, nf+nc, nf);
+        float** elems_012 = concatenate_matrices(elems_01, nf+nc, nf, zeros, nc, nf, 0, nf+2*nc, nf);
+        B_ks[rho_ind] = copy_matrix(elems_012, nf+2*nc, nf);
         // Creating the b_ks
-        double* b_k = create_vector(nf + 2*nc);
         matvecmul(B_ks[rho_ind], g, b_k, nf+2*nc, nf);
         // matmul(B_ks[rho_ind], g, b_k, nf+2*nc, nf, 1);
-        b_ks[rho_ind] = b_k;
+        b_ks[rho_ind] = copy_vector(b_k, nf+2*nc);
+        printf("Created dem matrices boi\n");
+        // FREE Tensors
+        free_tensor(elem_00_01, nf);
+        free_tensor(row_0, nf);
+        free_tensor(elem_10_11, nc);
+        free_tensor(row_1, nc);
+        free_tensor(elem_20_21, nc);
+        free_tensor(row_2, nc);
+        free_tensor(rows_01, nf+nc);
+        free_tensor(rows_012, nf+2*nc);
+        free_tensor(elems_01, nf+nc);
+        free_tensor(elems_012, nf+2*nc);
     }
     relu_layer->W_ks = W_ks;
     relu_layer->B_ks = B_ks;
     relu_layer->b_ks = b_ks;
     relu_layer->clamp_left = qp->nx;
     relu_layer->clamp_right = qp->nx + qp->nc;
-
+    
+    // Free remaining variables
+    free(rho);
+    free_tensor(rho_A, nc);
+    free_tensor(AT_rho_A, nf);
+    free_tensor(summed_mat, nf);
+    free_tensor(AT_rho, nf);
+    free_tensor(K_AT_rho, nf);
+    free_tensor(neg_K, nf);
+    free_tensor(A_elem00, nc);
+    free_tensor(A_K_AT_rho, nc);
+    free_tensor(K_AT, nf);
+    free_tensor(A_K_AT, nc);
+    free_tensor(neg_AK, nc);
+    free_tensor(neg_A, nc);
+    free_tensor(zeros, nc);
+    free_tensor(A_transpose, nf);
+    free_tensor(Ic, nc);
+    free_tensor(rho_mat, nc);
+    free_tensor(Ix, nf);
+    free_tensor(neg_I, nf);
+    free_tensor(rho_inv, nc);
+    free_tensor(elem_00, nf);
+    free_tensor(elem_01, nf);
+    free_tensor(elem_02, nf);
+    free_tensor(elem_10, nc);
+    free_tensor(elem_11, nc);
+    free_tensor(elem_12, nc);
+    free_tensor(elem_20, nc);
+    free_tensor(elem_21, nc);
+    free_tensor(elem_22, nc);
+    free(b_k);
+    
+    printf("All set\n");
     return relu_layer;
 }
 
-double* ReLU_Layer_Forward(ReLU_Layer* layer, double* x, int idx) {
+float* ReLU_Layer_Forward(ReLU_Layer* layer, float* x, int idx) {
     int idx1 = layer->clamp_left;
     int idx2 = layer->clamp_right;
     int nx = layer->qp->nx;
     int nc = layer->qp->nc;
 
     int D = nx + 2*nc;
-    double* intermediate = create_vector(D);
-    matvecmul(layer->W_ks[idx], x, intermediate, D, D);
-    vector_add(intermediate, layer->b_ks[idx], intermediate, D);
+    float* temp = create_vector(D);
+    float* intermediate = create_vector(D);
+    matvecmul(layer->W_ks[idx], x, temp, D, D);
+    vector_add(temp, layer->b_ks[idx], intermediate, D);
 
     for (int i = idx1; i < idx2; i++) {
-        double val = intermediate[i];
+        float val = intermediate[i];
         if (val < layer->qp->l[i - idx1]) {
             intermediate[i] = layer->qp->l[i - idx1];
         } else if (val > layer->qp->u[i - idx1]) {
             intermediate[i] = layer->qp->u[i - idx1];
         }
     }
+    free(temp);
     return intermediate;
 }
 
@@ -1022,32 +1198,32 @@ typedef struct
     QP* qp;
     struct timeval start;
     struct timeval end;
-    // double* x;
-    // double* z;
-    // double* lam;
-    double* output;
+    // float* x;
+    // float* z;
+    // float* lam;
+    float* output;
     int rho_ind;
 } ReLU_QP;
 
 
 ReLU_QP* Initialize_ReLU_QP(
-    double** H, double* g, double** A, double* l, double* u,
+    float** H, float* g, float** A, float* l, float* u,
     bool warm_starting, 
     bool scaling,
-    double rho,
-    double rho_min,
-    double rho_max,
-    double sigma, 
+    float rho,
+    float rho_min,
+    float rho_max,
+    float sigma, 
     bool adaptive_rho,
     int adaptive_rho_interval,
     int adaptive_rho_tolerance,
     int max_iter,
-    double eps_abs,
+    float eps_abs,
     int check_interval,
     bool verbose,
-    double eq_tol,
+    float eq_tol,
     int nc,
-    int nf,
+    // int nf,
     int nx
 ) {
 
@@ -1077,33 +1253,33 @@ ReLU_QP* Initialize_ReLU_QP(
         create_vector(nc), 
         relu_qp->info
     );
-    relu_qp->qp = InitializeQP(H, g, A, l, u, nx, nc, nf);
+    relu_qp->qp = InitializeQP(H, g, A, l, u, nx, nc);
     relu_qp->layers = Initialize_ReLU_Layer(relu_qp->qp, relu_qp->settings);
-    // double* x = create_vector(nx);
-    // double* z = create_vector(nc);
-    // double* lam = create_vector(nc);
+    // float* x = create_vector(nx);
+    // float* z = create_vector(nc);
+    // float* lam = create_vector(nc);
    relu_qp->output = create_vector(nx + 2*nc);
    for (int i =0; i < nx + 2*nc; i++) {
         relu_qp->output[i] = 0;
    }
     // self.rho_ind = np.argmin(np.abs(self.layers.rhos.cpu().detach().numpy() - self.settings.rho))
-    double* rhos_minus_rho = vector_subtract_scalar(relu_qp->layers->rhos, relu_qp->settings->rho, relu_qp->layers->rhos_len);
+    float* rhos_minus_rho = vector_subtract_scalar(relu_qp->layers->rhos, relu_qp->settings->rho, relu_qp->layers->rhos_len);
     relu_qp->rho_ind = argmin(vector_abs(rhos_minus_rho, relu_qp->layers->rhos_len), relu_qp->layers->rhos_len);
 
     gettimeofday(&relu_qp->end, NULL);
-    double elapsedTime = (double)(relu_qp->end.tv_sec - relu_qp->start.tv_sec) * 1000.0;
-    elapsedTime += (((double)(relu_qp->end.tv_usec - relu_qp->start.tv_usec)) / 1000.0) / 1000.;
+    float elapsedTime = (float)(relu_qp->end.tv_sec - relu_qp->start.tv_sec) * 1000.0;
+    elapsedTime += (((float)(relu_qp->end.tv_usec - relu_qp->start.tv_usec)) / 1000.0) / 1000.;
     relu_qp->info->setup_time = elapsedTime;
 
     free(rhos_minus_rho);
     return relu_qp;
 }
 
-double compute_J(double** H, double* g, double* x, int nx) {
-    double* Hx = create_vector(nx);
+float compute_J(float** H, float* g, float* x, int nx) {
+    float* Hx = create_vector(nx);
     matvecmul(H, x, Hx, nx, nx);
-    double Hx_dot_x = vector_dot(Hx, x, nx);
-    double gx = vector_dot(g, x, nx);
+    float Hx_dot_x = vector_dot(Hx, x, nx);
+    float gx = vector_dot(g, x, nx);
     free(Hx);
     return 0.5 * Hx_dot_x + gx;
 }
@@ -1114,13 +1290,13 @@ void clear_primal_dual(ReLU_QP* relu_qp) {
         relu_qp->output[i] = 0;
     }
     // self.rho_ind = np.argmin(np.abs(self.layers.rhos.cpu().detach().numpy() - self.settings.rho))
-    double* rhos_minus_rho = vector_subtract_scalar(relu_qp->layers->rhos, relu_qp->settings->rho, relu_qp->layers->rhos_len);
+    float* rhos_minus_rho = vector_subtract_scalar(relu_qp->layers->rhos, relu_qp->settings->rho, relu_qp->layers->rhos_len);
     relu_qp->rho_ind = argmin(vector_abs(rhos_minus_rho, relu_qp->layers->rhos_len), relu_qp->layers->rhos_len);
     free(rhos_minus_rho);
 }
 
 
-void update_results(ReLU_QP* relu_qp, int iter, double pri_res, double dua_res, double rho_estimate) {
+void update_results(ReLU_QP* relu_qp, int iter, float pri_res, float dua_res, float rho_estimate) {
     // gettimeofday(&relu_qp->start, NULL);
     relu_qp->results->info->iter = iter;
     relu_qp->results->info->pri_res = pri_res;
@@ -1129,11 +1305,11 @@ void update_results(ReLU_QP* relu_qp, int iter, double pri_res, double dua_res, 
 
     int nx = relu_qp->qp->nx;
     int nc = relu_qp->qp->nc;
-    double* x = (double*)malloc(relu_qp->qp->nx * sizeof(double));
+    float* x = (float*)malloc(relu_qp->qp->nx * sizeof(float));
     for (int i = 0; i < relu_qp->qp->nx; i++) {
         x[i] = relu_qp->output[i];
     }
-    double* z = (double*)malloc(relu_qp->qp->nc * sizeof(double));
+    float* z = (float*)malloc(relu_qp->qp->nc * sizeof(float));
     for (int i = nx; i < nx + nc; i++) {
         z[i - nx] = relu_qp->output[i];
     }
@@ -1141,12 +1317,12 @@ void update_results(ReLU_QP* relu_qp, int iter, double pri_res, double dua_res, 
     relu_qp->results->z = z;
     relu_qp->results->info->obj_val = compute_J(relu_qp->qp->H, relu_qp->qp->g, x, nx);
     gettimeofday(&relu_qp->end, NULL);
-    double elapsedTime = (double)(relu_qp->end.tv_sec - relu_qp->start.tv_sec) * 1000.0;
-    elapsedTime += (((double)(relu_qp->end.tv_usec - relu_qp->start.tv_usec)) / 1000.0) / 1000.;
+    float elapsedTime = (float)(relu_qp->end.tv_sec - relu_qp->start.tv_sec) * 1000.0;
+    elapsedTime += (((float)(relu_qp->end.tv_usec - relu_qp->start.tv_usec)) / 1000.0) / 1000.;
     relu_qp->results->info->run_time = elapsedTime;
     relu_qp->results->info->solve_time = relu_qp->results->info->update_time + elapsedTime;
     
-    // double* lam = create_vector(relu_qp->qp->nc);
+    // float* lam = create_vector(relu_qp->qp->nc);
     // TODO: Need to add the warm_starting check and then the clear_primal_dual function.
     if (relu_qp->settings->warm_starting) {
         clear_primal_dual(relu_qp);
@@ -1158,10 +1334,10 @@ void update_results(ReLU_QP* relu_qp, int iter, double pri_res, double dua_res, 
 }
 
 
-double vector_inf_norm(double* vec, int length) {
-    double max_val = 0.0;
+float vector_inf_norm(float* vec, int length) {
+    float max_val = 0.0;
     for (int i = 0; i < length; i++) {
-        double abs_val = fabs(vec[i]);
+        float abs_val = fabs(vec[i]);
         if (abs_val > max_val) {
             max_val = abs_val;
         }
@@ -1171,18 +1347,18 @@ double vector_inf_norm(double* vec, int length) {
 
 
 void compute_residuals(
-    double** H, double** A, double* g, double* x, double* z, double* lam, 
-    double* rho, double rho_min, double rho_max, int nx, int nc, 
-    double* primal_res, double* dual_res
+    float** H, float** A, float* g, float* x, float* z, float* lam, 
+    float* rho, float rho_min, float rho_max, int nx, int nc, 
+    float* primal_res, float* dual_res
 ) {
-    double *t1 = (double*)malloc(nc * sizeof(double));
-    double *t2 = (double*)malloc(nx * sizeof(double));
-    double *t3 = (double*)malloc(nx * sizeof(double));
-    double *temp_primal = (double*)malloc(nc * sizeof(double));
-    double *temp_dual = (double*)malloc(nx * sizeof(double));
+    float *t1 = (float*)malloc(nc * sizeof(float));
+    float *t2 = (float*)malloc(nx * sizeof(float));
+    float *t3 = (float*)malloc(nx * sizeof(float));
+    float *temp_primal = (float*)malloc(nc * sizeof(float));
+    float *temp_dual = (float*)malloc(nx * sizeof(float));
     matvecmul(A, x, t1, nc, nx);
     matvecmul(H, x, t2, nx, nx);
-    // double** AT = transpose_matrix(A, nc, nx);
+    // float** AT = transpose_matrix(A, nc, nx);
     // matvecmul(AT, lam, t3, nx, nc);
     for (int i = 0; i < nx; i++) {
         t3[i] = 0.0;
@@ -1200,11 +1376,11 @@ void compute_residuals(
         temp_dual[i] = t2[i] + t3[i] + g[i];
     }
     *dual_res = vector_inf_norm(temp_dual, nx);
-    double numerator = *primal_res / fmax(vector_inf_norm(t1, nc), vector_inf_norm(z, nc));
-    double denom = *dual_res / fmax(fmax(vector_inf_norm(t2, nx), vector_inf_norm(t3, nx)), vector_inf_norm(g, nx));
+    float numerator = *primal_res / fmax(vector_inf_norm(t1, nc), vector_inf_norm(z, nc));
+    float denom = *dual_res / fmax(fmax(vector_inf_norm(t2, nx), vector_inf_norm(t3, nx)), vector_inf_norm(g, nx));
 
     *rho = fmax(fmin(sqrt(numerator / denom) * (*rho), rho_max), rho_min);
-    // double denom = *dual_res / fmax(fmax(vector_inf_norm(t2, nx), vector_inf_norm(t3, nx)), vector_inf_norm(g, nx));
+    // float denom = *dual_res / fmax(fmax(vector_inf_norm(t2, nx), vector_inf_norm(t3, nx)), vector_inf_norm(g, nx));
 
     // *rho = fmax(fmin(sqrt(numerator / denom) * (*rho), rho_max), rho_min);
 
@@ -1225,21 +1401,21 @@ Results* solve(ReLU_QP* relu_qp) {
     Settings* settings = relu_qp->settings;
     int nx = relu_qp->qp->nx;
     int nc = relu_qp->qp->nc;
-    double rho = relu_qp->layers->rhos[relu_qp->rho_ind]; // Starting rho from adaptive rho array
+    float rho = relu_qp->layers->rhos[relu_qp->rho_ind]; // Starting rho from adaptive rho array
 
-    double* x = (double*)malloc(relu_qp->qp->nx * sizeof(double));
+    float* x = (float*)malloc(relu_qp->qp->nx * sizeof(float));
     for (int i = 0; i < relu_qp->qp->nx; i++) {
         x[i] = relu_qp->output[i];
     }
-    double* z = (double*)malloc(relu_qp->qp->nc * sizeof(double));
+    float* z = (float*)malloc(relu_qp->qp->nc * sizeof(float));
     for (int i = nx; i < nx + nc; i++) {
         z[i - nx] = relu_qp->output[i];
     }
-    double* lam = create_vector(relu_qp->qp->nc);
+    float* lam = create_vector(relu_qp->qp->nc);
     for (int i = nx+nc; i < nx + nc * 2; i++) {
         lam[i - (nx + nc)] = relu_qp->output[i];
     }
-    double primal_res, dual_res;
+    float primal_res, dual_res;
 
     for (int k = 1; k <= settings->max_iter; k++) {
         // Assume a function to update output based on current state
@@ -1249,11 +1425,11 @@ Results* solve(ReLU_QP* relu_qp) {
             for (int i = 0; i < relu_qp->qp->nx; i++) {
                 x[i] = relu_qp->output[i];
             }
-            double* z = (double*)malloc(relu_qp->qp->nc * sizeof(double));
+            float* z = (float*)malloc(relu_qp->qp->nc * sizeof(float));
             for (int i = nx; i < nx + nc; i++) {
                 z[i - nx] = relu_qp->output[i];
             }
-            double* lam = create_vector(relu_qp->qp->nc);
+            float* lam = create_vector(relu_qp->qp->nc);
             for (int i = nx+nc; i < nx + nc * 2; i++) {
                 lam[i - (nx + nc)] = relu_qp->output[i];
             }
@@ -1294,106 +1470,198 @@ Results* solve(ReLU_QP* relu_qp) {
     return relu_qp->results;
 
     // QueryPerformanceCounter(&t2); // Stop the performance counter
-    // double elapsedTime = (double)(t2.QuadPart - t1.QuadPart) * 1000.0 / frequency.QuadPart;
+    // float elapsedTime = (float)(t2.QuadPart - t1.QuadPart) * 1000.0 / frequency.QuadPart;
     // problem->info->solve_time = elapsedTime;
 }
 
+// Benchmarking Functions
+float return_bounded_random_number(float upper_bound) 
+// Taken from Hw5.
+{
+    float random_number = ((float) rand() / (float)RAND_MAX) * upper_bound;
+    // float rounded_number = roundf(random_number * 1000) / 1000; 
+    return random_number;
+}
 
 
+float** generate_random_matrix(int rows, int cols, float upper_bound) {
+    float** matrix = create_matrix(rows, cols);
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            matrix[i][j] = return_bounded_random_number(upper_bound);
+        }
+    }
+    return matrix;
+
+}
+
+float* generate_random_vector(int num_elems, float upper_bound) {
+    float* vector = create_vector(num_elems);
+    for (int i = 0; i < num_elems; i++) {
+        vector[i] = return_bounded_random_number(upper_bound);
+    }
+    return vector;
+
+}
+
+
+void generate_random_H(int nx, float** H_actual) {
+    // Generate a random H
+    float** H = generate_random_matrix(nx, nx, 1);
+    float** HT = transpose_matrix(H, nx, nx);
+    float** HTH = create_matrix(nx, nx);
+    matmul(HT, H, HTH, nx, nx, nx);
+    float** Ix = create_scalar_diagonal_matrix(1., nx);
+    // float** HTH_plus_Ix = create_matrix(nx, nx);
+    add_matrices(HTH, Ix, H_actual, nx, nx);
+    // Free variables
+    free(H);
+    free(HT);
+    free(HTH);
+    free(Ix);
+    // return HTH_plus_Ix;
+}
+
+void generate_random_QP(
+    int nx, int n_eq, int n_ineq, 
+    float** H, float* g, float** A_actual, float* l, float*u
+) {
+    generate_random_H(nx, H);
+    float** A = generate_random_matrix(n_eq, nx, 1.);
+    float** C = generate_random_matrix(n_ineq, nx, 1.);
+    float* active_ineq_temp = generate_random_vector(n_ineq, 1.);
+    float* active_ineq = create_vector(n_ineq);
+    for (int i = 0; i < n_ineq; i++) {
+        if (active_ineq_temp[i] > 0.5) {
+            active_ineq[i] = 1.;
+        }
+        else {
+            active_ineq[i] = 0.;
+        }
+    }
+    float* mu = generate_random_vector(n_eq, 1.);
+    float* lam = generate_random_vector(n_ineq, 1.);
+    for (int i = 0; i < n_ineq; i++) {
+        lam[i] = lam[i] * active_ineq[i];
+    }
+    float* x = generate_random_vector(nx, 1.);
+    float* b = create_vector(n_eq);
+    matvecmul(A, x, b, n_eq, nx);
+    float* Cx = create_vector(nx);
+    matvecmul(C, x, Cx, n_ineq, nx);
+    float* temp = generate_random_vector(n_ineq, 1.);
+    for (int i=0; i < n_ineq; i++) {
+        temp[i] = temp[i] * (1. - active_ineq[i]);
+    }
+    float* d = create_vector(n_ineq);
+    vector_subtract(Cx, temp, d, n_ineq);
+    // Let's get g
+    float** AT = transpose_matrix(A, n_eq, nx);
+    float* ATmu = create_vector(nx);
+    matvecmul(AT, mu, ATmu, nx, n_eq);
+    
+    float* Hx = create_vector(nx);
+    matvecmul(H, x, Hx, nx, nx);
+
+    float** CT = transpose_matrix(C, n_ineq, nx);
+    float* CTlam = create_vector(nx);
+    matvecmul(CT, lam, CTlam, nx, n_ineq);
+
+    for (int i = 0; i < nx; i++) {
+        g[i] = -Hx[i] - ATmu[i] - CTlam[i];
+    }
+
+    float** A_temp = concatenate_matrices(A, n_eq, nx, C, n_ineq, nx, 0, n_eq + n_ineq, nx);
+    float** zeros = create_matrix( n_eq + n_ineq, nx);
+    add_matrices(A_temp, zeros, A_actual, n_eq + n_ineq, nx);
+    for (int i = 0; i < n_eq; i++) {
+        l[i] = b[i];
+    }
+    for (int i = n_eq; i < n_eq + n_ineq; i++) {
+        l[i] = d[i - n_eq];
+    }
+    for (int i = 0; i < n_eq; i++) {
+        u[i] = b[i];
+    }
+    for (int i = n_eq; i < n_eq + n_ineq; i++) {
+        u[i] = INFINITY;
+    }
+
+    // printf("Printing l: \n");
+    // for (int i = 0; i < n_eq + n_ineq; i++) {
+    //     printf("%f\t", l[i]);
+    // }
+    // printf("\n");
+    // printf("Printing u: \n");
+    // for (int i = 0; i < n_eq + n_ineq; i++) {
+    //     printf("%f\t", u[i]);
+    // }
+    // printf("\n");
+
+    free(x);
+    free(active_ineq_temp);
+    free_tensor(A, n_eq);
+    free_tensor(C, n_ineq);
+    free(active_ineq);
+    free(mu);
+    free(lam);
+    free(b);
+    free(Cx);
+    free(temp);
+    free(d);
+    free(ATmu);
+    free(Hx);
+    free(CTlam);
+    free_tensor(AT, nx);
+    free_tensor(CT, nx);
+    // free_tensor(zeros, n_eq + n_ineq);
+    free_tensor(A_temp, n_eq + n_ineq);
+}
 
 int main()
 {
     int nx = 3;
-    int nc = 5;
-    int nf = 3;
-    double** H = get_H(nx, nf);
-    double** A = get_A(nc, nf);
-    double* g = get_g(nx);
-    double* u = get_u(nc);
-    double* l = get_l(nc);
+    int n_eq = 10;
+    int n_ineq = 5;
+    
+    // int nc = 5;
+    // float** H = get_H(nx);
+    // float** A = get_A(nc, nx);
+    // float* g = get_g(nx);
+    // float* u = get_u(nc);
+    // float* l = get_l(nc);
+
+    int nc = n_eq + n_ineq;
+    float** H = create_matrix(nx, nx);
+    float** A = create_matrix(nc, nx);
+    float* g = create_vector(nx);
+    float* u = create_vector(nc);
+    float* l = create_vector(nc);
+    generate_random_QP(nx, n_eq, n_ineq, H, g, A, l, u);
+
+    printf("Printing Variables: \n");
+    print_matrix(nx, nx, H);
+    print_matrix(nc, nx, A);
+    print_vector(nx, g);
+    print_vector(nc, l);
+    print_vector(nc, u);
+    printf("----------------------\n");
     
     bool verbose = false;
     bool warm_starting = true;
     bool scaling = false;
-    double rho = 0.1;
-    double rho_min = 1e-6;
-    double rho_max = 1000000.0;
-    double sigma = 1e-6;
+    float rho = 0.1;
+    float rho_min = 1e-6;
+    float rho_max = 1000000.0;
+    float sigma = 1e-6;
     bool adaptive_rho = true;
     int adaptive_rho_interval = 1;
-    double adaptive_rho_tolerance = 5;
+    float adaptive_rho_tolerance = 5;
     int max_iter = 4000;
-    double eps_abs = 1e-3;
-    double eq_tol = 1e-6;
+    float eps_abs = 1e-3;
+    float eq_tol = 1e-6;
     int check_interval = 25;
     
-    int iter = 500;
-    double obj_val = 0.1;
-    double pri_res = 0.2;
-    double dua_res = 0.3;
-    double setup_time = 1;
-    double solve_time = 2;
-    double update_time = 3;
-    double run_time = 4;
-    double rho_estimate = 5.;
-    
-    // double x = 420;
-    // double z = 17;
-    
-    Settings* settings = InitializeSettings(
-        verbose,
-        warm_starting,
-        scaling,
-        rho,
-        rho_min,
-        rho_max,
-        sigma,
-        adaptive_rho,
-        adaptive_rho_interval,
-        adaptive_rho_tolerance,
-        max_iter,
-        eps_abs,
-        eq_tol,
-        check_interval
-    );
-    
-    Info* info = InitializeInfo(
-        iter,
-        obj_val,
-        pri_res,
-        dua_res,
-        setup_time,
-        solve_time,
-        update_time,
-        run_time,
-        rho_estimate
-    );
-    
-    // QP* qp = InitializeQP(H, g, A, l, u, nx, nc, nf);
-    // printf("qp->nc is: %d\n", qp->nc);
-    // ReLU_Layer* layers = Initialize_ReLU_Layer(qp, settings);
-    // printf("Printing rhos array of length %d:\n", layers->rhos_len);
-    // for (int i = 0; i < layers->rhos_len; i++) {
-    //     // if (i == layers->rhos_len - 1) {
-    //     //     printf("%lf ", layers->rhos[i-1] * 5);
-    //     //     printf("%lf ", layers->rhos[i] + 5);
-    //     // }
-    //     // else {
-    //     //     printf("%lf ", layers->rhos[i]);
-    //     // }
-    //     printf("%lf ", layers->rhos[i]);
-    // }
-    // printf("\n");
-
-    // double* input = create_vector((nx + 2 * nc));
-    // for (int i = 0; i < nx + 2 * nc; i++) {
-    //     input[i] = 1;
-    // }
-    // double* y = ReLU_Layer_Forward(layers, input, 0);
-    // for (int i = 0; i < nx + 2 * nc; i++) {
-    //     printf("%lf ", y[i]);
-    // }
-    // printf("\n");
     ReLU_QP* relu_qp = (ReLU_QP*)malloc(sizeof(ReLU_QP));
     Results* solve_results = (Results*) malloc(sizeof(Results));
 
@@ -1415,12 +1683,11 @@ int main()
             verbose,
             eq_tol,
             nc,
-            nf,
             nx
         );
         solve_results = solve(relu_qp);
-        printf("The setup time taken is: %lf\n", solve_results->info->setup_time);
-        printf("The solve time taken is: %lf\n", solve_results->info->solve_time);
+        printf("The setup time taken is: %f\n", solve_results->info->setup_time);
+        printf("The solve time taken is: %f\n", solve_results->info->solve_time);
     }
     relu_qp = Initialize_ReLU_QP(
         H, g, A, l, u,
@@ -1439,24 +1706,23 @@ int main()
         verbose,
         eq_tol,
         nc,
-        nf,
         nx
     );
     solve_results = solve(relu_qp);
     printf("The result x is: ");
     for (int i = 0; i < nx; i++) {
-        printf("%lf ", solve_results->x[i]);
+        printf("%f ", solve_results->x[i]);
     }
     printf("\n");
-    printf("The solve time was: %lf\n", solve_results->info->solve_time);
-    printf("The setup time was: %lf\n", solve_results->info->setup_time);
+    printf("The solve time was: %f\n", solve_results->info->solve_time);
+    printf("The setup time was: %f\n", solve_results->info->setup_time);
     printf("the number of iterations was: %d\n", solve_results->info->iter);
 
     // Results* solve_results = solve(relu_qp);
-    // // printf("The solve time taken is: %lf\n", solve_results->info->solve_time);
+    // // printf("The solve time taken is: %f\n", solve_results->info->solve_time);
     // printf("The result x is: ");
     // for (int i = 0; i < nx; i++) {
-    //     printf("%lf ", solve_results->x[i]);
+    //     printf("%f ", solve_results->x[i]);
     // }
     struct timeval start_time;
     struct timeval end_time;
@@ -1465,10 +1731,10 @@ int main()
         solve_results = solve(relu_qp);
     }
     gettimeofday(&end_time, NULL);
-    double elapsedTime = (double)(end_time.tv_sec - start_time.tv_sec) * 1000.0;
-    elapsedTime += (((double)(end_time.tv_usec - start_time.tv_usec)) / 1000.0) / 1000.;
-    double avg_time = elapsedTime / 1000.;
-    printf("The average time taken is: %lf\n", avg_time);
+    float elapsedTime = (float)(end_time.tv_sec - start_time.tv_sec) * 1000.0;
+    elapsedTime += (((float)(end_time.tv_usec - start_time.tv_usec)) / 1000.0) / 1000.;
+    float avg_time = elapsedTime / 1000.;
+    printf("The average time taken is: %f\n", avg_time);
     
     // freeQP(qp);
     free_tensor(H, nx);
@@ -1476,8 +1742,8 @@ int main()
     free(g);
     free(l);
     free(u);
-    free_Settings(settings);
-    free_Info(info);
+    // free_Settings(settings);
+    // free_Info(info);
     // free_Results(results);
     // free_ReLU_Layer(layers);
 
