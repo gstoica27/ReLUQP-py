@@ -818,7 +818,7 @@ ReLU_Layer* Initialize_ReLU_Layer (
     int increasing_amount = (int)((1. + (log(settings->rho) - log(settings->rho_min)) / log(settings->adaptive_rho_tolerance)));
     int decreasing_amount = (int)((log(settings->rho_max) - log(settings->rho)) / log(settings->adaptive_rho_tolerance));
     int total_amount = increasing_amount + decreasing_amount;
-    printf("The total amount is: %d\n", total_amount);
+    // printf("The total amount is: %d\n", total_amount);
     float* rhos = (float*)malloc(total_amount * sizeof(float));
     rhos[0] = settings->rho;
     relu_layer->rhos = rhos;
@@ -947,15 +947,15 @@ ReLU_Layer* Initialize_ReLU_Layer (
         // for (int j = 0; j < nf; j++) {
         //     B_ks[i][j] = (float*)malloc(nf * sizeof(float));
         // }
-        printf("YAR ME MATIES CREATING W_ks\n");
+        // printf("YAR ME MATIES CREATING W_ks\n");
         W_ks[i] = create_matrix(W_Row, W_Row);
-        printf("Lit we're about to rock your world with B_ks\n");
+        // printf("Lit we're about to rock your world with B_ks\n");
         B_ks[i] = create_matrix(W_Row, nf);
-        printf("Boom bam gottem with these b_ks\n");
+        // printf("Boom bam gottem with these b_ks\n");
         b_ks[i] = create_vector(W_Row);
-        printf("I'm creating matrices at i: %d\n", i);
+        // printf("I'm creating matrices at i: %d\n", i);
     }
-    printf("I'm here\n");
+    // printf("I'm here\n");
     // Define variables
     float* rho = create_vector(nc);
     float** rho_A = create_matrix(nc, nf);
@@ -1002,18 +1002,18 @@ ReLU_Layer* Initialize_ReLU_Layer (
 
     for (int rho_ind = 0; rho_ind < relu_layer->rhos_len; rho_ind++) {
         // printf("##################################################\n");
-        printf("rho_ind is: %d\n", rho_ind);
+        // printf("rho_ind is: %d\n", rho_ind);
         float rho_scalar = relu_layer->rhos[rho_ind];
         for (int j = 0; j < nc; j++) {
             rho[j] = rho_scalar;
         }
-        printf("created rho vector\n");
+        // printf("created rho vector\n");
         vector_where(conditional, rho, rho_scalar * 1e3, rho_scalar, nc);
         // float** rho_mat = create_diagonal_matrix(rho, nc);
         populate_diagonal_matrix(rho, rho_mat, nc);
         // free(sigma_vector);
         // float** K = kkts_rhs_invs[rho_ind];
-        printf("created Ic, K\n");
+        // printf("created Ic, K\n");
         // CREATING W_ks elements!!!!
         // Create (0, 0) element
         // K @ (sigma * Ix - A.T @ (rho @ A))
@@ -1021,7 +1021,7 @@ ReLU_Layer* Initialize_ReLU_Layer (
         matmul(A_transpose, rho_A, AT_rho_A, nf, nc, nf);
         subtract_matrices(Ix, AT_rho_A, summed_mat, nf, nf);
         matmul(kkts_rhs_invs[rho_ind], summed_mat, elem_00, nf, nf, nf);
-        printf("Created elem 00\n");
+        // printf("Created elem 00\n");
         // Create (0, 1) element
         // 2 * K @ A.T @ rho
         matmul(A_transpose, rho_mat, AT_rho, nf, nc, nc); // [nf,nc]
@@ -1029,18 +1029,18 @@ ReLU_Layer* Initialize_ReLU_Layer (
         scalar_multiply_matrix(K_AT_rho, 2, K_AT_rho, nf, nc);
         // float** elem_01 = copy_matrix(K_AT_rho, nf, nc);
         copy_matrix_inplace(K_AT_rho, elem_01, nf, nc);
-        printf("Created elem 01\n");
+        // printf("Created elem 01\n");
         // Create (0, 2) element
         // -K @ A.T
         matmul(neg_I, kkts_rhs_invs[rho_ind], neg_K, nf, nf, nf);
         matmul(neg_K, A_transpose, elem_02, nf, nf, nc);
-        printf("Created elem 02\n");
+        // printf("Created elem 02\n");
         // Create (1, 0) element
         // A @ K @ (sigma * Ix - A.T @ (rho @ A)) + A
         // A @ elem_00 + A
         matmul(A, elem_00, A_elem00, nc, nf, nf);
         add_matrices(A_elem00, A, elem_10, nc, nf);
-        printf("Created elem 10\n");
+        // printf("Created elem 10\n");
         // Create (1, 1) element
         // 2 * A @ K @ A.T @ rho - Ic
         // 2 * partial_elem01 - Ic
@@ -1048,7 +1048,7 @@ ReLU_Layer* Initialize_ReLU_Layer (
         matmul(A, K_AT_rho, A_K_AT_rho, nc, nf, nc);
         scalar_multiply_matrix(A_K_AT_rho, 2, A_K_AT_rho, nc, nc);
         subtract_matrices(A_K_AT_rho, Ic, elem_11, nc, nc);
-        printf("Created elem 11\n");
+        // printf("Created elem 11\n");
         // Create (1, 2) element
         // -A @ K @ A.T + rho_inv
         matmul(kkts_rhs_invs[rho_ind], A_transpose, K_AT, nf, nf, nc);
@@ -1058,20 +1058,20 @@ ReLU_Layer* Initialize_ReLU_Layer (
         // divide_diag(rho_inv, rho_mat, rho_inv, nc);
         divide_diag(Ic, rho_mat, rho_inv, nc);
         add_matrices(A_K_AT, rho_inv, elem_12, nc, nc);
-        printf("Created elem 12\n");
+        // printf("Created elem 12\n");
         // Create (2, 0) element
         // rho @ A
         matmul(rho_mat, A, elem_20, nc, nc, nf);
-        printf("Created elem 20\n");
+        // printf("Created elem 20\n");
         // Create (2, 1) element                                                    [nc, nf]
         // -rho
         scalar_multiply_matrix(rho_mat, -1., elem_21, nc, nc);
-        printf("Created elem 21\n");
+        // printf("Created elem 21\n");
         // Create (2, 2) element                                                    [nc, nc]
         // Ic
         // float** elem_22 = copy_matrix(Ic, nc, nc); //                              [nc, nc]
         copy_matrix_inplace(Ic, elem_22, nc, nc);
-        printf("Created elem 22\n");
+        // printf("Created elem 22\n");
         // W_ks is of size:
         // [nf, nf + nc + nc]
         // [nc, nf + nc + nc]
@@ -1089,9 +1089,9 @@ ReLU_Layer* Initialize_ReLU_Layer (
         float** row_2 = concatenate_matrices(elem_20_21, nc, nf+nc, elem_22, nc, nc, 1, nc, nf+2*nc);
         float** rows_01 = concatenate_matrices(row_0, nf, nf+2*nc, row_1, nc, nf+2*nc, 0, nf+nc, nf+2*nc);
         float** rows_012 = concatenate_matrices(rows_01, nf+nc, nf+2*nc, row_2, nc, nf+2*nc, 0, nf+2*nc, nf+2*nc);
-        printf("Creating W_ks[whatever]\n");
+        // printf("Creating W_ks[whatever]\n");
         W_ks[rho_ind] = copy_matrix(rows_012, nf+2*nc, nf+2*nc);
-        printf("Created W_ks[whatever]\n");
+        // printf("Created W_ks[whatever]\n");
         // FREE TENSORS
         // free_tensor(rho_A, nc);
         // free_tensor(A_transpose, nf);
@@ -1105,7 +1105,7 @@ ReLU_Layer* Initialize_ReLU_Layer (
         matvecmul(B_ks[rho_ind], g, b_k, nf+2*nc, nf);
         // matmul(B_ks[rho_ind], g, b_k, nf+2*nc, nf, 1);
         b_ks[rho_ind] = copy_vector(b_k, nf+2*nc);
-        printf("Created dem matrices boi\n");
+        // printf("Created dem matrices boi\n");
         // FREE Tensors
         free_tensor(elem_00_01, nf);
         free_tensor(row_0, nf);
@@ -1156,7 +1156,7 @@ ReLU_Layer* Initialize_ReLU_Layer (
     free_tensor(elem_22, nc);
     free(b_k);
     
-    printf("All set\n");
+    // printf("All set\n");
     return relu_layer;
 }
 
@@ -1267,8 +1267,8 @@ ReLU_QP* Initialize_ReLU_QP(
     relu_qp->rho_ind = argmin(vector_abs(rhos_minus_rho, relu_qp->layers->rhos_len), relu_qp->layers->rhos_len);
 
     gettimeofday(&relu_qp->end, NULL);
-    float elapsedTime = (float)(relu_qp->end.tv_sec - relu_qp->start.tv_sec) * 1000.0;
-    elapsedTime += (((float)(relu_qp->end.tv_usec - relu_qp->start.tv_usec)) / 1000.0) / 1000.;
+    float elapsedTime = (float)(relu_qp->end.tv_sec - relu_qp->start.tv_sec);
+    elapsedTime += (((float)(relu_qp->end.tv_usec - relu_qp->start.tv_usec)) / 1000000.0);
     relu_qp->info->setup_time = elapsedTime;
 
     free(rhos_minus_rho);
@@ -1317,8 +1317,8 @@ void update_results(ReLU_QP* relu_qp, int iter, float pri_res, float dua_res, fl
     relu_qp->results->z = z;
     relu_qp->results->info->obj_val = compute_J(relu_qp->qp->H, relu_qp->qp->g, x, nx);
     gettimeofday(&relu_qp->end, NULL);
-    float elapsedTime = (float)(relu_qp->end.tv_sec - relu_qp->start.tv_sec) * 1000.0;
-    elapsedTime += (((float)(relu_qp->end.tv_usec - relu_qp->start.tv_usec)) / 1000.0) / 1000.;
+    float elapsedTime = (float)(relu_qp->end.tv_sec - relu_qp->start.tv_sec);
+    elapsedTime += (((float)(relu_qp->end.tv_usec - relu_qp->start.tv_usec)) / 1000000.0);
     relu_qp->results->info->run_time = elapsedTime;
     relu_qp->results->info->solve_time = relu_qp->results->info->update_time + elapsedTime;
     
@@ -1620,33 +1620,28 @@ void generate_random_QP(
 
 int main()
 {
-    int nx = 3;
-    int n_eq = 10;
-    int n_ineq = 5;
-    
-    // int nc = 5;
-    // float** H = get_H(nx);
-    // float** A = get_A(nc, nx);
-    // float* g = get_g(nx);
-    // float* u = get_u(nc);
-    // float* l = get_l(nc);
+    // int nx = 100;
+    // int n_eq = 8;
+    // int n_ineq = 5;
+    int num_seeds = 3;
+    unsigned int* seeds = (unsigned int*)malloc(num_seeds * sizeof(unsigned int));
+    for (int i = 0; i < 3; i++) {
+        seeds[i] = i;
+    }
 
-    int nc = n_eq + n_ineq;
-    float** H = create_matrix(nx, nx);
-    float** A = create_matrix(nc, nx);
-    float* g = create_vector(nx);
-    float* u = create_vector(nc);
-    float* l = create_vector(nc);
-    generate_random_QP(nx, n_eq, n_ineq, H, g, A, l, u);
+    float nx_list[10] = {
+        25.0, 
+        34.87376984906053, 
+        48.64719293940974, 
+        67.86044041487268, 
+        94.6619752353662, 
+        132.04879751262516, 
+        184.2015749320193, 
+        256.9521332005488, 
+        358.4355822184434, 
+        500.0
+    };
 
-    printf("Printing Variables: \n");
-    print_matrix(nx, nx, H);
-    print_matrix(nc, nx, A);
-    print_vector(nx, g);
-    print_vector(nc, l);
-    print_vector(nc, u);
-    printf("----------------------\n");
-    
     bool verbose = false;
     bool warm_starting = true;
     bool scaling = false;
@@ -1661,96 +1656,200 @@ int main()
     float eps_abs = 1e-3;
     float eq_tol = 1e-6;
     int check_interval = 25;
-    
-    ReLU_QP* relu_qp = (ReLU_QP*)malloc(sizeof(ReLU_QP));
+
+    float** solve_times = create_matrix(10, num_seeds);
     Results* solve_results = (Results*) malloc(sizeof(Results));
+    for (int nx_idx = 0; nx_idx < 10; nx_idx++) {
+        printf("On nx_idx: %d\n", nx_idx);
+        int nx = (int) nx_list[nx_idx];
+        int n_eq = (int) (nx_list[nx_idx] / 4.);
+        int n_ineq = (int) (nx_list[nx_idx] / 4.);
 
-    for (int i = 0; i < 10; i++) {
-        relu_qp = Initialize_ReLU_QP(
-            H, g, A, l, u,
-            warm_starting,
-            scaling,
-            rho,
-            rho_min,
-            rho_max,
-            sigma,
-            adaptive_rho,
-            adaptive_rho_interval,
-            adaptive_rho_tolerance,
-            max_iter,
-            eps_abs,
-            check_interval,
-            verbose,
-            eq_tol,
-            nc,
-            nx
-        );
-        solve_results = solve(relu_qp);
-        printf("The setup time taken is: %f\n", solve_results->info->setup_time);
-        printf("The solve time taken is: %f\n", solve_results->info->solve_time);
-    }
-    relu_qp = Initialize_ReLU_QP(
-        H, g, A, l, u,
-        warm_starting,
-        scaling,
-        rho,
-        rho_min,
-        rho_max,
-        sigma,
-        adaptive_rho,
-        adaptive_rho_interval,
-        adaptive_rho_tolerance,
-        max_iter,
-        eps_abs,
-        check_interval,
-        verbose,
-        eq_tol,
-        nc,
-        nx
-    );
-    solve_results = solve(relu_qp);
-    printf("The result x is: ");
-    for (int i = 0; i < nx; i++) {
-        printf("%f ", solve_results->x[i]);
-    }
-    printf("\n");
-    printf("The solve time was: %f\n", solve_results->info->solve_time);
-    printf("The setup time was: %f\n", solve_results->info->setup_time);
-    printf("the number of iterations was: %d\n", solve_results->info->iter);
+        int nc = n_eq + n_ineq;
+        float** H = create_matrix(nx, nx);
+        float** A = create_matrix(nc, nx);
+        float* g = create_vector(nx);
+        float* u = create_vector(nc);
+        float* l = create_vector(nc);
 
-    // Results* solve_results = solve(relu_qp);
-    // // printf("The solve time taken is: %f\n", solve_results->info->solve_time);
+        for (int seed_idx = 0; seed_idx < num_seeds; seed_idx++) {
+            printf("On seed_idx: %d\n", seed_idx);
+            srand(seeds[seed_idx]);
+            generate_random_QP(nx, n_eq, n_ineq, H, g, A, l, u);
+            ReLU_QP* relu_qp = Initialize_ReLU_QP(
+                H, g, A, l, u,
+                warm_starting,
+                scaling,
+                rho,
+                rho_min,
+                rho_max,
+                sigma,
+                adaptive_rho,
+                adaptive_rho_interval,
+                adaptive_rho_tolerance,
+                max_iter,
+                eps_abs,
+                check_interval,
+                verbose,
+                eq_tol,
+                nc,
+                nx
+            );
+            solve_results = solve(relu_qp);
+
+            // model.results.info.run_time/1e6
+            // solve_times[seed_idx + nx_idx * 10] = solve_results->info->run_time;
+            solve_times[nx_idx][seed_idx] = solve_results->info->run_time;
+            printf("The solve time was: %f\n", solve_results->info->run_time);
+        }
+
+        free_tensor(H, nx);
+        free_tensor(A, nc);
+        free(g);
+        free(u);
+        free(l);
+    }
+
+    printf("Printing solve times...\n");
+    print_matrix(10, num_seeds, solve_times);
+
+    
+
+
+
+
+    // // srand(seed);
+    
+    // // int nc = 5;
+    // // float** H = get_H(nx);
+    // // float** A = get_A(nc, nx);
+    // // float* g = get_g(nx);
+    // // float* u = get_u(nc);
+    // // float* l = get_l(nc);
+
+    // int nc = n_eq + n_ineq;
+    // float** H = create_matrix(nx, nx);
+    // float** A = create_matrix(nc, nx);
+    // float* g = create_vector(nx);
+    // float* u = create_vector(nc);
+    // float* l = create_vector(nc);
+    // generate_random_QP(nx, n_eq, n_ineq, H, g, A, l, u);
+
+    // // printf("Printing Variables: \n");
+    // // print_matrix(nx, nx, H);
+    // // print_matrix(nc, nx, A);
+    // // print_vector(nx, g);
+    // // print_vector(nc, l);
+    // // print_vector(nc, u);
+    // // printf("----------------------\n");
+    
+    // bool verbose = false;
+    // bool warm_starting = true;
+    // bool scaling = false;
+    // float rho = 0.1;
+    // float rho_min = 1e-6;
+    // float rho_max = 1000000.0;
+    // float sigma = 1e-6;
+    // bool adaptive_rho = true;
+    // int adaptive_rho_interval = 1;
+    // float adaptive_rho_tolerance = 5;
+    // int max_iter = 4000;
+    // float eps_abs = 1e-3;
+    // float eq_tol = 1e-6;
+    // int check_interval = 25;
+    
+    // ReLU_QP* relu_qp = (ReLU_QP*)malloc(sizeof(ReLU_QP));
+    // Results* solve_results = (Results*) malloc(sizeof(Results));
+
+    // for (int i = 0; i < 10; i++) {
+    //     generate_random_QP(nx, n_eq, n_ineq, H, g, A, l, u);
+    //     relu_qp = Initialize_ReLU_QP(
+    //         H, g, A, l, u,
+    //         warm_starting,
+    //         scaling,
+    //         rho,
+    //         rho_min,
+    //         rho_max,
+    //         sigma,
+    //         adaptive_rho,
+    //         adaptive_rho_interval,
+    //         adaptive_rho_tolerance,
+    //         max_iter,
+    //         eps_abs,
+    //         check_interval,
+    //         verbose,
+    //         eq_tol,
+    //         nc,
+    //         nx
+    //     );
+    //     solve_results = solve(relu_qp);
+    //     printf("The setup time taken is: %f\n", solve_results->info->setup_time);
+    //     printf("The solve time taken is: %f\n", solve_results->info->solve_time);
+    // }
+
+    // generate_random_QP(nx, n_eq, n_ineq, H, g, A, l, u);
+    // relu_qp = Initialize_ReLU_QP(
+    //     H, g, A, l, u,
+    //     warm_starting,
+    //     scaling,
+    //     rho,
+    //     rho_min,
+    //     rho_max,
+    //     sigma,
+    //     adaptive_rho,
+    //     adaptive_rho_interval,
+    //     adaptive_rho_tolerance,
+    //     max_iter,
+    //     eps_abs,
+    //     check_interval,
+    //     verbose,
+    //     eq_tol,
+    //     nc,
+    //     nx
+    // );
+    // solve_results = solve(relu_qp);
     // printf("The result x is: ");
     // for (int i = 0; i < nx; i++) {
     //     printf("%f ", solve_results->x[i]);
     // }
-    struct timeval start_time;
-    struct timeval end_time;
-    gettimeofday(&start_time, NULL);
-    for (int i = 0; i < 1000; i++) {
-        solve_results = solve(relu_qp);
-    }
-    gettimeofday(&end_time, NULL);
-    float elapsedTime = (float)(end_time.tv_sec - start_time.tv_sec) * 1000.0;
-    elapsedTime += (((float)(end_time.tv_usec - start_time.tv_usec)) / 1000.0) / 1000.;
-    float avg_time = elapsedTime / 1000.;
-    printf("The average time taken is: %f\n", avg_time);
+    // printf("\n");
+    // printf("The solve time was: %f\n", solve_results->info->solve_time);
+    // printf("The setup time was: %f\n", solve_results->info->setup_time);
+    // printf("the number of iterations was: %d\n", solve_results->info->iter);
+
+    // // Results* solve_results = solve(relu_qp);
+    // // // printf("The solve time taken is: %f\n", solve_results->info->solve_time);
+    // // printf("The result x is: ");
+    // // for (int i = 0; i < nx; i++) {
+    // //     printf("%f ", solve_results->x[i]);
+    // // }
+    // struct timeval start_time;
+    // struct timeval end_time;
+    // gettimeofday(&start_time, NULL);
+    // for (int i = 0; i < 1000; i++) {
+    //     solve_results = solve(relu_qp);
+    // }
+    // gettimeofday(&end_time, NULL);
+    // float elapsedTime = (float)(end_time.tv_sec - start_time.tv_sec);
+    // elapsedTime += (((float)(end_time.tv_usec - start_time.tv_usec)) / 1000000.0);
+    // float avg_time = elapsedTime / 1000.;
+    // printf("The average time taken is: %f\n", avg_time);
     
-    // freeQP(qp);
-    free_tensor(H, nx);
-    free_tensor(A, nc);
-    free(g);
-    free(l);
-    free(u);
-    // free_Settings(settings);
-    // free_Info(info);
-    // free_Results(results);
-    // free_ReLU_Layer(layers);
+    // // freeQP(qp);
+    // free_tensor(H, nx);
+    // free_tensor(A, nc);
+    // free(g);
+    // free(l);
+    // free(u);
+    // // free_Settings(settings);
+    // // free_Info(info);
+    // // free_Results(results);
+    // // free_ReLU_Layer(layers);
 
-    // for(int loop = 0; loop < 10; loop++)
-    //   printf("%f ", array[loop]);
+    // // for(int loop = 0; loop < 10; loop++)
+    // //   printf("%f ", array[loop]);
 
-    printf("Hello World");
+    // printf("Hello World");
 
     return 0;
 }
