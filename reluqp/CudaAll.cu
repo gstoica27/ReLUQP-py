@@ -436,21 +436,6 @@ void divide_diag(float** A, float** B, float** result, int num_row) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 __global__ void matrixMulKernel(float *d_matrix1, float *d_matrix2, float *d_result, int left, int nelem, int right) {
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
@@ -519,30 +504,6 @@ void matmul_c(float **matrix1, float **matrix2, float **result, int left, int ne
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 __global__ void matvecMulKernel(float* d_matrix, float* d_vector, float* d_result, int left, int nelem) {
     int row = blockIdx.x * blockDim.x + threadIdx.x;
     if (row < left) {
@@ -604,18 +565,6 @@ void matvecmul_c(float** matrix, float* vector, float* result, int left, int nel
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 __global__ void vectorDotKernel(float *d_vec1, float *d_vec2, float *d_result, int dim) {
     extern __shared__ float cache[]; // Dynamic shared memory allocation
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -648,9 +597,6 @@ __global__ void vectorDotKernel(float *d_vec1, float *d_vec2, float *d_result, i
         d_result[blockIdx.x] = cache[0];
     }
 }
-
-
-
 
 
 
@@ -694,11 +640,6 @@ float vector_dot_c(float* vec1, float* vec2, int dim) {
 
     return final_result;
 }
-
-
-
-
-
 
 
 
@@ -773,18 +714,6 @@ float** concatenate_matrices_c(float** mat1, int rows1, int cols1, float** mat2,
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 __global__ void addMatricesKernel(float* d_A, float* d_B, float* d_result, int num_row, int num_col) {
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
@@ -794,17 +723,6 @@ __global__ void addMatricesKernel(float* d_A, float* d_B, float* d_result, int n
         d_result[index] = d_A[index] + d_B[index];
     }
 }
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -858,27 +776,6 @@ void add_matrices_c(float** A, float** B, float** result, int num_row, int num_c
     free(flatB);
     free(flatResult);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -947,14 +844,6 @@ void subtract_matrices_c(float** A, float** B, float** result, int num_row, int 
     free(flatB);
     free(flatResult);
 }
-
-
-
-
-
-
-
-
 
 
 
@@ -1207,23 +1096,6 @@ float* vector_subtract_scalar(float* vector, float scalar, int dim) {
 }
 
 
-// void MatrixInverse3x3(float** m, float** minv) {
-//     // computes the inverse of a matrix m
-//     float det = m[0][0] * (m[1][1] * m[2][2] - m[2][1] * m[1][2]) -
-//                 m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
-//                 m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
-
-//     float invdet = 1 / det;
-//     minv[0][0] = (m[1][1] * m[2][2] - m[2][1] * m[1][2]) * invdet;
-//     minv[0][1] = (m[0][2] * m[2][1] - m[0][1] * m[2][2]) * invdet;
-//     minv[0][2] = (m[0][1] * m[1][2] - m[0][2] * m[1][1]) * invdet;
-//     minv[1][0] = (m[1][2] * m[2][0] - m[1][0] * m[2][2]) * invdet;
-//     minv[1][1] = (m[0][0] * m[2][2] - m[0][2] * m[2][0]) * invdet;
-//     minv[1][2] = (m[1][0] * m[0][2] - m[0][0] * m[1][2]) * invdet;
-//     minv[2][0] = (m[1][0] * m[2][1] - m[2][0] * m[1][1]) * invdet;
-//     minv[2][1] = (m[2][0] * m[0][1] - m[0][0] * m[2][1]) * invdet;
-//     minv[2][2] = (m[0][0] * m[1][1] - m[1][0] * m[0][1]) * invdet;
-// }
 
 // Function to concatenate two matrices in C
 float** concatenate_matrices(float** mat1, int rows1, int cols1, float** mat2, int rows2, int cols2, int dim, int out_rows, int out_cols) {
@@ -1429,11 +1301,8 @@ ReLU_Layer* Initialize_ReLU_Layer (
         float** summed_mat = create_matrix(nf, nf);
         add_matrices_c(H, sigma_mat, summed_mat, nf, nf);
         add_matrices_c(summed_mat, AT_rho_A, summed_mat, nf, nf);
-        // need to take inverse now.... of summed mats
         float** summed_mat_inv = create_matrix(nf, nf);
-        // printf("I'm about to get fucked taking the inverse:\n");
         compute_matrix_inverse(summed_mat, summed_mat_inv, nf);
-        // printf("Ah I'm all fucked up\n");
 
         // MatrixInverse3x3(summed_mat, summed_mat_inv);
         for (int a = 0; a < nf; a++) {
@@ -1445,14 +1314,12 @@ ReLU_Layer* Initialize_ReLU_Layer (
         // printf("################################\n");
         // kkts_rhs_invs[i] = summed_mat_inv;
         // // free variables
-        // printf("About to free some bitches on iteration: %d\n", i);
         free(sigma_vector);
         free(rho);
         free_tensor(rho_A, nc);
         free_tensor(A_transpose, nf);
         free_tensor(summed_mat, nf);
         free_tensor(sigma_mat, nf);
-        // printf("Freed them MFs\n");
     }
 
     // Define W_ks, B_ks, b_ks
@@ -1470,15 +1337,10 @@ ReLU_Layer* Initialize_ReLU_Layer (
         // for (int j = 0; j < nf; j++) {
         //     B_ks[i][j] = (float*)malloc(nf * sizeof(float));
         // }
-        // printf("YAR ME MATIES CREATING W_ks\n");
         W_ks[i] = create_matrix(W_Row, W_Row);
-        // printf("Lit we're about to rock your world with B_ks\n");
         B_ks[i] = create_matrix(W_Row, nf);
-        // printf("Boom bam gottem with these b_ks\n");
         b_ks[i] = create_vector(W_Row);
-        // printf("I'm creating matrices at i: %d\n", i);
     }
-    // printf("I'm here\n");
     // Define variables
     float* rho = create_vector(nc);
     float** rho_A = create_matrix(nc, nf);
@@ -1612,9 +1474,7 @@ ReLU_Layer* Initialize_ReLU_Layer (
         float** row_2 = concatenate_matrices_c(elem_20_21, nc, nf+nc, elem_22, nc, nc, 1, nc, nf+2*nc);
         float** rows_01 = concatenate_matrices_c(row_0, nf, nf+2*nc, row_1, nc, nf+2*nc, 0, nf+nc, nf+2*nc);
         float** rows_012 = concatenate_matrices_c(rows_01, nf+nc, nf+2*nc, row_2, nc, nf+2*nc, 0, nf+2*nc, nf+2*nc);
-        // printf("Creating W_ks[whatever]\n");
         W_ks[rho_ind] = copy_matrix(rows_012, nf+2*nc, nf+2*nc);
-        // printf("Created W_ks[whatever]\n");
         // FREE TENSORS
         // free_tensor(rho_A, nc);
         // free_tensor(A_transpose, nf);
@@ -1628,7 +1488,6 @@ ReLU_Layer* Initialize_ReLU_Layer (
         matvecmul_c(B_ks[rho_ind], g, b_k, nf+2*nc, nf);
         // matmul(B_ks[rho_ind], g, b_k, nf+2*nc, nf, 1);
         b_ks[rho_ind] = copy_vector(b_k, nf+2*nc);
-        // printf("Created dem matrices boi\n");
         // FREE Tensors
         free_tensor(elem_00_01, nf);
         free_tensor(row_0, nf);
