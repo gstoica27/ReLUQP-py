@@ -764,6 +764,378 @@ float** mat1, int rows1, int cols1, float** mat2, int rows2, int cols2, int dim,
 }
 
 
+///////// New Performing stuff Kernel + C functions using it
+__global__ void matrixMulKernel(float *d_matrix1, float *d_matrix2, float *d_result, int left, int nelem, int right) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (row < left && col < right) {
+        float sum = 0.0;
+        for (int k = 0; k < nelem; k++) {
+            sum += d_matrix1[row * nelem + k] * d_matrix2[k * right + col];
+        }
+        d_result[row * right + col] = sum;
+    }
+}
+
+void matmul_c(float **matrix1, float **matrix2, float **result, int left, int nelem, int right) {
+    size_t size_matrix1 = left * nelem * sizeof(float);
+    size_t size_matrix2 = nelem * right * sizeof(float);
+    size_t size_result = left * right * sizeof(float);
+
+    float *h_matrix1 = (float*)malloc(size_matrix1);
+    float *h_matrix2 = (float*)malloc(size_matrix2);
+    float *h_result = (float*)malloc(size_result);
+
+    // Initialize input matrices with valid numbers to avoid NaN results
+    for (int i = 0; i < left; i++) {
+        for (int j = 0; j < nelem; j++) {
+            h_matrix1[i * nelem + j] = matrix1[i][j];
+        }
+    }
+    for (int i = 0; i < nelem; i++) {
+        for (int j = 0; j < right; j++) {
+            h_matrix2[i * right + j] = matrix2[i][j];
+        }
+    }
+
+    float *d_matrix1, *d_matrix2, *d_result;
+    cudaMalloc(&d_matrix1, size_matrix1);
+    cudaMalloc(&d_matrix2, size_matrix2);
+    cudaMalloc(&d_result, size_result);
+
+    cudaMemcpy(d_matrix1, h_matrix1, size_matrix1, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_matrix2, h_matrix2, size_matrix2, cudaMemcpyHostToDevice);
+
+    dim3 blockSize(32, 32);
+    dim3 gridSize((right + blockSize.x - 1) / blockSize.x, (left + blockSize.y - 1) / blockSize.y);
+
+    matrixMulKernel<<<gridSize, blockSize>>>(d_matrix1, d_matrix2, d_result, left, nelem, right);
+
+    cudaMemcpy(h_result, d_result, size_result, cudaMemcpyDeviceToHost);
+
+    for (int i = 0; i < left; i++) {
+        for (int j = 0; j < right; j++) {
+            result[i][j] = h_result[i * right + j];
+        }
+    }
+
+    free(h_matrix1);
+    free(h_matrix2);
+    free(h_result);
+    cudaFree(d_matrix1);
+    cudaFree(d_matrix2);
+    cudaFree(d_result);
+}
+
+__global__ void matvecMulKernel(float* d_matrix, float* d_vector, float* d_result, int left, int nelem) {
+    int row = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row < left) {
+        float sum = 0.0;
+        for (int j = 0; j < nelem; j++) {
+            sum += d_matrix[row * nelem + j] * d_vector[j];
+        }
+        d_result[row] = sum;
+    }
+}
+
+
+void matvecmul_c(float** matrix, float* vector, float* result, int left, int nelem) {
+    size_t size_matrix = left * nelem * sizeof(float);
+    size_t size_vector = nelem * sizeof(float);
+    size_t size_result = left * sizeof(float);
+
+    float* d_matrix;
+    float* d_vector;
+    float* d_result;
+
+    // Allocate device memory
+    cudaMalloc((void**)&d_matrix, size_matrix);
+    cudaMalloc((void**)&d_vector, size_vector);
+    cudaMalloc((void**)&d_result, size_result);
+
+    // Flatten the 2D matrix into a 1D array for easy CUDA memory handling
+    float* flat_matrix = (float*)malloc(size_matrix);
+    for (int i = 0; i < left; i++) {
+        for (int j = 0; j < nelem; j++) {
+            flat_matrix[i * nelem + j] = matrix[i][j];
+        }
+    }
+
+    // Copy data from host to device
+    cudaMemcpy(d_matrix, flat_matrix, size_matrix, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_vector, vector, size_vector, cudaMemcpyHostToDevice);
+
+    // Calculate grid and block sizes
+    int blockSize = 256; // This can be tuned to best suit hardware capabilities
+    int numBlocks = (left + blockSize - 1) / blockSize;
+
+    // Launch the kernel
+    matvecMulKernel<<<numBlocks, blockSize>>>(d_matrix, d_vector, d_result, left, nelem);
+
+    // Copy the result back to the host
+    cudaMemcpy(result, d_result, size_result, cudaMemcpyDeviceToHost);
+
+    // Free device memory
+    cudaFree(d_matrix);
+    cudaFree(d_vector);
+    cudaFree(d_result);
+
+    // Free host memory
+    free(flat_matrix);
+}
+
+__global__ void vectorDotKernel(float *d_vec1, float *d_vec2, float *d_result, int dim) {
+    extern __shared__ float cache[]; // Dynamic shared memory allocation
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    int cacheIndex = threadIdx.x;
+
+    float tempSum = 0;
+    while (tid < dim) {
+        tempSum += d_vec1[tid] * d_vec2[tid];
+        tid += blockDim.x * gridDim.x;
+    }
+
+    // Set the cache values
+    cache[cacheIndex] = tempSum;
+
+    // Synchronize threads in this block
+    __syncthreads();
+
+    // Reduction within a block
+    int i = blockDim.x / 2;
+    while (i != 0) {
+        if (cacheIndex < i) {
+            cache[cacheIndex] += cache[cacheIndex + i];
+        }
+        __syncthreads();
+        i /= 2;
+    }
+
+    // Store the result from this block to global memory
+    if (cacheIndex == 0) {
+        d_result[blockIdx.x] = cache[0];
+    }
+}
+
+
+float vector_dot_c(float* vec1, float* vec2, int dim) {
+    float *d_vec1, *d_vec2, *d_result;
+    float final_result = 0.0;
+
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (dim + threadsPerBlock - 1) / threadsPerBlock;
+
+    // Allocate memory for partial sums after blocksPerGrid is calculated
+    float *partial_sums = (float *)malloc(blocksPerGrid * sizeof(float));
+    
+    cudaMalloc((void **)&d_vec1, dim * sizeof(float));
+    cudaMalloc((void **)&d_vec2, dim * sizeof(float));
+    cudaMalloc((void **)&d_result, blocksPerGrid * sizeof(float));
+
+    cudaMemcpy(d_vec1, vec1, dim * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_vec2, vec2, dim * sizeof(float), cudaMemcpyHostToDevice);
+
+    // Launch the kernel with dynamically allocated shared memory
+    vectorDotKernel<<<blocksPerGrid, threadsPerBlock, threadsPerBlock * sizeof(float)>>>(d_vec1, d_vec2, d_result, dim);
+
+    // Copy results back to the host
+    cudaMemcpy(partial_sums, d_result, blocksPerGrid * sizeof(float), cudaMemcpyDeviceToHost);
+
+    // Accumulate results from all blocks
+    for (int i = 0; i < blocksPerGrid; i++) {
+        final_result += partial_sums[i];
+    }
+
+    // Free device memory
+    cudaFree(d_vec1);
+    cudaFree(d_vec2);
+    cudaFree(d_result);
+    
+    // Free host memory
+    free(partial_sums);
+
+    return final_result;
+}
+
+
+__global__ void concatenateMatricesKernel(float* d_mat1, int rows1, int cols1, float* d_mat2, int rows2, int cols2, float* d_result, int out_rows, int out_cols, int dim) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int idy = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (dim == 1) { // Horizontal concatenation
+        if (idy < out_rows && idx < out_cols) {
+            if (idx < cols1) {
+                d_result[idy * out_cols + idx] = d_mat1[idy * cols1 + idx];
+            } else if (idx >= cols1 && idx < out_cols) {
+                d_result[idy * out_cols + idx] = d_mat2[idy * cols2 + (idx - cols1)];
+            }
+        }
+    } else if (dim == 0) { // Vertical concatenation
+        if (idx < out_cols && idy < out_rows) {
+            if (idy < rows1) {
+                d_result[idy * out_cols + idx] = d_mat1[idy * cols1 + idx];
+            } else if (idy >= rows1 && idy < out_rows) {
+                d_result[idy * out_cols + idx] = d_mat2[(idy - rows1) * cols2 + idx];
+            }
+        }
+    }
+}
+
+
+float** concatenate_matrices_c(float** mat1, int rows1, int cols1, float** mat2, int rows2, int cols2, int dim, int out_rows, int out_cols) {
+    size_t size_mat1 = rows1 * cols1 * sizeof(float);
+    size_t size_mat2 = rows2 * cols2 * sizeof(float);
+    size_t size_result = out_rows * out_cols * sizeof(float);
+
+    float* d_mat1, *d_mat2, *d_result;
+    cudaMalloc((void **)&d_mat1, size_mat1);
+    cudaMalloc((void **)&d_mat2, size_mat2);
+    cudaMalloc((void **)&d_result, size_result);
+
+    // Aplatir et copier les données sur le GPU
+    cudaMemcpy(d_mat1, mat1[0], size_mat1, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_mat2, mat2[0], size_mat2, cudaMemcpyHostToDevice);
+
+    dim3 blockSize(32, 32);
+    dim3 gridSize((out_cols + blockSize.x - 1) / blockSize.x, (out_rows + blockSize.y - 1) / blockSize.y);
+
+    // Lancer le kernel
+    concatenateMatricesKernel<<<gridSize, blockSize>>>(d_mat1, rows1, cols1, d_mat2, rows2, cols2, d_result, out_rows, out_cols, dim);
+
+    // Allouer la matrice résultat sur l'hôte et copier les données depuis le GPU
+    float** result = (float**)malloc(out_rows * sizeof(float*));
+    for (int i = 0; i < out_rows; i++) {
+        result[i] = (float*)malloc(out_cols * sizeof(float));
+    }
+    cudaMemcpy(result[0], d_result, size_result, cudaMemcpyDeviceToHost);
+
+    cudaFree(d_mat1);
+    cudaFree(d_mat2);
+    cudaFree(d_result);
+
+    return result;
+}
+
+
+__global__ void addMatricesKernel(float* d_A, float* d_B, float* d_result, int num_row, int num_col) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (row < num_row && col < num_col) {
+        int index = row * num_col + col;
+        d_result[index] = d_A[index] + d_B[index];
+    }
+}
+
+
+void add_matrices_c(float** A, float** B, float** result, int num_row, int num_col) {
+    size_t size = num_row * num_col * sizeof(float);
+
+    // Flatten 2D arrays into 1D arrays for easier GPU memory handling
+    float* flatA = (float*)malloc(size);
+    float* flatB = (float*)malloc(size);
+    float* flatResult = (float*)malloc(size);
+
+    for (int i = 0; i < num_row; i++) {
+        for (int j = 0; j < num_col; j++) {
+            flatA[i * num_col + j] = A[i][j];
+            flatB[i * num_col + j] = B[i][j];
+        }
+    }
+
+    float *d_A, *d_B, *d_result;
+
+    cudaMalloc((void**)&d_A, size);
+    cudaMalloc((void**)&d_B, size);
+    cudaMalloc((void**)&d_result, size);
+
+    cudaMemcpy(d_A, flatA, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, flatB, size, cudaMemcpyHostToDevice);
+
+    dim3 blockSize(32, 32);
+    dim3 gridSize((num_col + blockSize.x - 1) / blockSize.x, (num_row + blockSize.y - 1) / blockSize.y);
+
+    addMatricesKernel<<<gridSize, blockSize>>>(d_A, d_B, d_result, num_row, num_col);
+
+    // Copy the result back to the host
+    cudaMemcpy(flatResult, d_result, size, cudaMemcpyDeviceToHost);
+
+    // Unflatten result back to 2D array
+    for (int i = 0; i < num_row; i++) {
+        for (int j = 0; j < num_col; j++) {
+            result[i][j] = flatResult[i * num_col + j];
+        }
+    }
+
+    // Free resources
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_result);
+    free(flatA);
+    free(flatB);
+    free(flatResult);
+}
+
+__global__ void subtractMatricesKernel(float* d_A, float* d_B, float* d_result, int num_row, int num_col) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (row < num_row && col < num_col) {
+        int index = row * num_col + col;
+        d_result[index] = d_A[index] - d_B[index];
+    }
+}
+
+
+void subtract_matrices_c(float** A, float** B, float** result, int num_row, int num_col) {
+    size_t size = num_row * num_col * sizeof(float);
+
+    // Flatten 2D arrays into 1D arrays for easier GPU memory handling
+    float* flatA = (float*)malloc(size);
+    float* flatB = (float*)malloc(size);
+    float* flatResult = (float*)malloc(size);
+
+    for (int i = 0; i < num_row; i++) {
+        for (int j = 0; j < num_col; j++) {
+            flatA[i * num_col + j] = A[i][j];
+            flatB[i * num_col + j] = B[i][j];
+        }
+    }
+
+    float *d_A, *d_B, *d_result;
+
+    cudaMalloc((void**)&d_A, size);
+    cudaMalloc((void**)&d_B, size);
+    cudaMalloc((void**)&d_result, size);
+
+    cudaMemcpy(d_A, flatA, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, flatB, size, cudaMemcpyHostToDevice);
+
+    dim3 blockSize(32, 32);
+    dim3 gridSize((num_col + blockSize.x - 1) / blockSize.x, (num_row + blockSize.y - 1) / blockSize.y);
+
+    subtractMatricesKernel<<<gridSize, blockSize>>>(d_A, d_B, d_result, num_row, num_col);
+
+    // Copy the result back to the host
+    cudaMemcpy(flatResult, d_result, size, cudaMemcpyDeviceToHost);
+
+    // Unflatten result back to 2D array
+    for (int i = 0; i < num_row; i++) {
+        for (int j = 0; j < num_col; j++) {
+            result[i][j] = flatResult[i * num_col + j];
+        }
+    }
+
+    // Free resources
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_result);
+    free(flatA);
+    free(flatB);
+    free(flatResult);
+}
+
 
 typedef struct
 {
@@ -899,6 +1271,7 @@ ReLU_Layer* Initialize_ReLU_Layer (
         free_tensor(A_transpose, nf);
         free_tensor(summed_mat, nf);
         free_tensor(sigma_mat, nf);
+        // printf("Freed them MFs\n");
     }
 
     // Define W_ks, B_ks, b_ks
@@ -960,6 +1333,8 @@ ReLU_Layer* Initialize_ReLU_Layer (
     float** elem_20 = create_matrix(nc, nf);
     float** elem_21 = create_matrix(nc, nc);
     float** elem_22 = create_matrix(nc, nc);
+
+
 
     // float** elem_00_01 = create_matrix(nf, nf+nc);
 
@@ -1416,6 +1791,7 @@ Results* solve(ReLU_QP* relu_qp) {
             }
 
             // Check for convergence
+            // printf("Priting x: ")
             if (primal_res < settings->eps_abs * sqrt(nc) && dual_res < settings->eps_abs * sqrt(nx)) {
                 update_results(relu_qp, k, primal_res, dual_res, rho);
                 return relu_qp->results;
