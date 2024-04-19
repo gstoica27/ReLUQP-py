@@ -1,6 +1,8 @@
 MIT License
 
-Copyright (c) 2023 Robotic Exploration Lab
+Copyright (c) 2024 Rayan Maleck, George Stoicas, and Stu Topp.
+Copyright (c) 2023 Robotic Exploration Lab.
+Copyright (c) Ganeshaanand Balasubramanian.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +21,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+================================================================================
+
+This software contains materials licensed under the Creative Commons Attribution-ShareAlike 4.0 International License. Such materials are marked as such within the source code and include a link to the original material. The CC BY-SA 4.0 license is located at https://creativecommons.org/licenses/by-sa/4.0/legalcode.txt.
